@@ -13,6 +13,7 @@ import configparser
 import json
 import os
 import re
+import runpy
 import subprocess
 import sys
 import threading
@@ -27,7 +28,10 @@ from urllib.parse import urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones, reset_tzpath
 
 
-SKILL_DIR = Path(__file__).resolve().parent.parent
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    SKILL_DIR = Path(sys._MEIPASS).resolve()
+else:
+    SKILL_DIR = Path(__file__).resolve().parent.parent
 HTML_PATH = SKILL_DIR / "assets" / "report_app.html"
 CODEX_COLLECTOR = SKILL_DIR / "scripts" / "collect_codex_usage.py"
 BUNDLED_TZDATA = SKILL_DIR / "tzdata"
@@ -46,8 +50,26 @@ DEFAULT_BEDROCK_SCRIPT = Path(
 )
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
-APP_VERSION = "1.1.1"
+APP_VERSION = "1.2.0"
 RELEASE_DATE = "2026-08-05"
+
+
+def python_script_command(script: Path, *arguments: str) -> list[str]:
+    """Run a collector with source Python or the private frozen runtime."""
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--run-python-script", str(script), *arguments]
+    return [sys.executable, str(script), *arguments]
+
+
+def run_python_script_mode() -> None:
+    """Execute an approved collector inside the bundled Python runtime."""
+    if len(sys.argv) < 3:
+        raise SystemExit("A Python script path is required.")
+    script = Path(sys.argv[2]).expanduser().resolve()
+    if not script.is_file():
+        raise SystemExit(f"Python script not found: {script}")
+    sys.argv = [str(script), *sys.argv[3:]]
+    runpy.run_path(str(script), run_name="__main__")
 
 
 def local_timezone_name() -> str:
@@ -338,7 +360,7 @@ def collect_bedrock(
         )
 
     days = int(period["days"])
-    args = [sys.executable, str(script), "-d", str(days), "--json"]
+    args = python_script_command(script, "-d", str(days), "--json")
     profile = str(config.get("profile") or "").strip()
     access_key = str(config.get("access_key_id") or "").strip()
     secret_key = str(config.get("secret_access_key") or "")
@@ -405,9 +427,8 @@ def collect_codex(
         str(config.get("sessions_dir") or "~/.codex/sessions"),
         Path.home() / ".codex" / "sessions",
     )
-    args = [
-        sys.executable,
-        str(CODEX_COLLECTOR),
+    args = python_script_command(
+        CODEX_COLLECTOR,
         "--start-date",
         period["start_date"].isoformat(),
         "--end-date",
@@ -416,7 +437,7 @@ def collect_codex(
         timezone_name,
         "--sessions-dir",
         str(sessions_dir),
-    ]
+    )
     code, data, message = run_json_command(args, timeout=180)
     if code or data is None:
         return failure(
@@ -859,11 +880,43 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the Monthly AI Usage Report setup wizard.")
     parser.add_argument("--port", type=int, default=8765, help="Loopback port (default: 8765; use 0 for automatic).")
     parser.add_argument("--no-browser", action="store_true", help="Do not open the browser automatically.")
+    parser.add_argument("--self-test", action="store_true", help=argparse.SUPPRESS)
     return parser
 
 
 def main() -> int:
     args = build_parser().parse_args()
+    if args.self_test:
+        command = python_script_command(
+            CODEX_COLLECTOR,
+            "--start-date",
+            "2000-01-01",
+            "--end-date",
+            "2000-01-01",
+            "--timezone",
+            "UTC",
+            "--sessions-dir",
+            str(SKILL_DIR / "__empty_self_test_sessions__"),
+        )
+        code, data, message = run_json_command(command, timeout=90)
+        checks = {
+            "html": HTML_PATH.is_file(),
+            "codex_collector": CODEX_COLLECTOR.is_file(),
+            "bedrock_collector": BUNDLED_BEDROCK_SCRIPT.is_file(),
+            "timezone_data": BUNDLED_TZDATA.is_dir(),
+            "collector_subprocess": code == 0 and data is not None,
+        }
+        print(
+            json.dumps(
+                {
+                    "version": APP_VERSION,
+                    "frozen": bool(getattr(sys, "frozen", False)),
+                    "checks": checks,
+                    "message": "ok" if all(checks.values()) else message,
+                }
+            )
+        )
+        return 0 if all(checks.values()) else 2
     if not HTML_PATH.is_file():
         print(f"Error: app asset not found: {HTML_PATH}", file=sys.stderr)
         return 2
@@ -888,4 +941,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--run-python-script":
+        run_python_script_mode()
+        raise SystemExit(0)
     raise SystemExit(main())

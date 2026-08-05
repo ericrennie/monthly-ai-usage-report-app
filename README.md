@@ -9,7 +9,22 @@ or custom-range usage report from:
 
 ## Run
 
-Python 3.11 or newer is required; no Python packages need to be installed.
+The platform-specific desktop ZIPs include a private Python runtime. Users do
+not install Python, need administrator access, or alter system Python.
+
+## Run a desktop build
+
+1. Download the ZIP matching Windows x64, macOS Apple Silicon, or macOS Intel
+   from the latest release.
+2. Extract it.
+3. Double-click `START-WINDOWS.bat` or `START-MAC.command`.
+
+The executable is currently unsigned. Follow your organization's software
+approval policy; do not bypass endpoint protections.
+
+## Run from source
+
+Python 3.11 or newer is required; no runtime packages need to be installed.
 
 - macOS: double-click `START-MAC.command`
 - Windows: double-click `START-WINDOWS.bat`
@@ -17,6 +32,19 @@ Python 3.11 or newer is required; no Python packages need to be installed.
 
 The app opens at `http://127.0.0.1:8765/` and is available only on the local
 computer. See `START-HERE.txt` for collection and security details.
+
+## Build desktop packages
+
+PyInstaller is needed only on the build machine. Build each operating-system
+artifact on that operating system:
+
+```text
+python -m pip install -r scripts/requirements-build.txt
+python scripts/build_desktop_app.py
+```
+
+The included GitHub Actions workflow builds Windows x64, macOS Apple Silicon,
+and macOS Intel packages and runs the frozen-app self-test.
 
 ## Bedrock setup
 

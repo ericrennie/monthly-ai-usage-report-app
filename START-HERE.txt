@@ -1,8 +1,14 @@
 MONTHLY AI USAGE REPORT APP
 
-Requirements
-------------
-Python 3.11 or newer. No Python packages need to be installed.
+Recommended desktop download
+----------------------------
+Use the platform-specific ZIP from the GitHub release. It includes a private
+Python runtime and does not install or change Python on the computer.
+
+Source edition requirements
+---------------------------
+This source folder requires Python 3.11 or newer. No runtime packages need to
+be installed.
 
 Start on macOS
 --------------
@@ -12,7 +18,7 @@ Start on macOS
 Start on Windows
 ----------------
 1. Double-click START-WINDOWS.bat.
-2. If Python is missing, install Python 3.11+ and select "Add Python to PATH".
+2. The source launcher requires Python 3.11+. The Windows desktop release does not.
 
 Use the app
 -----------
