@@ -1,6 +1,7 @@
 # Monthly AI Usage Report App
 
-A local, dependency-free browser app for generating a monthly usage report from:
+A local, dependency-free browser app for generating a daily, weekly, monthly,
+or custom-range usage report from:
 
 - Claude Code usage collected through an AWS Bedrock collector
 - local Codex session telemetry
@@ -28,6 +29,7 @@ AWS credentials or a selected AWS profile.
 
 - Credentials stay in process memory for one collector run and are not saved.
 - Local Codex telemetry is not authoritative ChatGPT subscription billing.
-- Circuit figures are manually transcribed because browser single sign-on cannot
-  be shared with this localhost app.
+- Circuit figures can be extracted from dashboard text the user explicitly
+  copies or pastes. Browser same-origin controls prevent silent cross-tab access.
 - Provider token totals are not directly comparable units.
+- Word export is a Word-compatible `.doc`; use Print / Save PDF for a PDF copy.

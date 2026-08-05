@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Aggregate local Codex session telemetry for one calendar month."""
+"""Aggregate local Codex session telemetry for an exact local date range."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import json
 import os
 import sys
 from collections import Counter
-from datetime import datetime
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -30,6 +30,13 @@ def parse_month(value: str) -> tuple[int, int]:
     except ValueError as exc:
         raise argparse.ArgumentTypeError("month must use YYYY-MM") from exc
     return parsed.year, parsed.month
+
+
+def parse_date(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("date must use YYYY-MM-DD") from exc
 
 
 def previous_month(now: datetime) -> tuple[int, int]:
@@ -138,16 +145,17 @@ def read_session(path: Path) -> dict[str, Any] | None:
     }
 
 
-def collect(root: Path, year: int, month: int, timezone) -> dict[str, Any]:
-    next_year, next_month = month_after(year, month)
-    start = datetime(year, month, 1, tzinfo=timezone)
-    end = datetime(next_year, next_month, 1, tzinfo=timezone)
+def collect_range(root: Path, start_date: date, end_date: date, timezone) -> dict[str, Any]:
+    if end_date < start_date:
+        raise ValueError("end date must be on or after start date")
+    start = datetime.combine(start_date, time.min, tzinfo=timezone)
+    end = datetime.combine(end_date + timedelta(days=1), time.min, tzinfo=timezone)
 
     by_session_id: dict[str, dict[str, Any]] = {}
     file_errors: list[str] = []
     parse_errors = 0
 
-    for path in session_files(root, year, month):
+    for path in session_files(root, start_date.year, start_date.month):
         try:
             record = read_session(path)
         except OSError as exc:
@@ -230,14 +238,18 @@ def collect(root: Path, year: int, month: int, timezone) -> dict[str, Any]:
 
     warnings: list[str] = []
     if not active_sessions:
-        warnings.append("No Codex token-count events matched the requested calendar month.")
+        warnings.append("No Codex token-count events matched the requested date range.")
     if file_errors or parse_errors:
         warnings.append("Some session data could not be parsed; review data_quality details.")
 
     return {
         "source": "local Codex session telemetry",
         "sessions_dir": str(root),
-        "reporting_month": f"{year:04d}-{month:02d}",
+        "reporting_period": {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "days": (end_date - start_date).days + 1,
+        },
         "reporting_window_local": {
             "start": start.isoformat(),
             "end_exclusive": end.isoformat(),
@@ -265,15 +277,26 @@ def collect(root: Path, year: int, month: int, timezone) -> dict[str, Any]:
     }
 
 
+def collect(root: Path, year: int, month: int, timezone) -> dict[str, Any]:
+    """Backward-compatible calendar-month wrapper."""
+    next_year, next_month = month_after(year, month)
+    end_date = date(next_year, next_month, 1) - timedelta(days=1)
+    report = collect_range(root, date(year, month, 1), end_date, timezone)
+    report["reporting_month"] = f"{year:04d}-{month:02d}"
+    return report
+
+
 def build_parser() -> argparse.ArgumentParser:
     default_root = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")) / "sessions"
     parser = argparse.ArgumentParser(
-        description="Aggregate local Codex session telemetry for a calendar month."
+        description="Aggregate local Codex session telemetry for a calendar month or exact date range."
     )
     parser.add_argument(
         "--month",
         help="Reporting month in YYYY-MM; defaults to the previous local calendar month.",
     )
+    parser.add_argument("--start-date", help="Inclusive start date in YYYY-MM-DD.")
+    parser.add_argument("--end-date", help="Inclusive end date in YYYY-MM-DD.")
     parser.add_argument(
         "--sessions-dir",
         type=Path,
@@ -293,8 +316,20 @@ def main() -> int:
     args = parser.parse_args()
     try:
         timezone = local_timezone(args.timezone)
-        year, month = parse_month(args.month) if args.month else previous_month(datetime.now(timezone))
-        report = collect(args.sessions_dir.expanduser(), year, month, timezone)
+        if args.month and (args.start_date or args.end_date):
+            raise ValueError("choose --month or --start-date/--end-date, not both")
+        if bool(args.start_date) != bool(args.end_date):
+            raise ValueError("--start-date and --end-date must be provided together")
+        if args.start_date and args.end_date:
+            report = collect_range(
+                args.sessions_dir.expanduser(),
+                parse_date(args.start_date),
+                parse_date(args.end_date),
+                timezone,
+            )
+        else:
+            year, month = parse_month(args.month) if args.month else previous_month(datetime.now(timezone))
+            report = collect(args.sessions_dir.expanduser(), year, month, timezone)
     except (argparse.ArgumentTypeError, ValueError, OSError) as exc:
         parser.error(str(exc))
         return 2

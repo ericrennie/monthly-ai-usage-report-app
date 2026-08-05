@@ -73,7 +73,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-radius: 0.25rem;
 }
 .brand-title { font-size: 1.05rem; font-weight: 600; }
+.header-actions { display: flex; align-items: center; gap: 0.8rem; }
 .header-meta { font-size: 0.72rem; opacity: 0.65; text-align: right; line-height: 1.4; }
+.btn-header { color: var(--card); border-color: rgba(255,255,255,0.48); background: transparent; }
 
 main { width: min(72rem, calc(100% - 2rem)); margin: 0 auto; padding: 2rem 0 3rem; }
 .hero {
@@ -134,7 +136,7 @@ main { width: min(72rem, calc(100% - 2rem)); margin: 0 auto; padding: 2rem 0 3re
 .field.full { grid-column: 1 / -1; }
 label, legend { font-size: 0.75rem; font-weight: 700; color: var(--text); }
 .help { font-size: 0.71rem; color: var(--muted); line-height: 1.45; }
-input[type="text"], input[type="password"], input[type="month"], input[type="number"], select, textarea {
+input[type="text"], input[type="password"], input[type="date"], input[type="number"], select, textarea {
   width: 100%;
   min-height: 2.65rem;
   border: 1px solid var(--border);
@@ -166,6 +168,13 @@ fieldset { border: 0; }
   border-radius: 0.5rem;
   padding: 0.8rem;
 }
+.path-row { display: flex; gap: 0.55rem; align-items: stretch; }
+.path-row input { flex: 1; min-width: 0; }
+.capture-panel { background: var(--info-bg); border: 1px solid rgba(0,81,175,0.18); border-radius: 0.55rem; padding: 1rem; }
+.capture-panel h3 { color: var(--midnight); font-size: 0.86rem; margin-bottom: 0.35rem; }
+.inline-status { min-height: 1.2rem; color: var(--muted); font-size: 0.72rem; }
+.inline-status.success { color: #2E6B00; }
+.inline-status.error { color: var(--accent-red); }
 .hidden { display: none !important; }
 
 .action-bar {
@@ -241,6 +250,26 @@ table.report-table td:nth-child(3), table.report-table td:nth-child(4) { font-va
 
 footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.5rem 1rem; border-top: 1px solid var(--border); }
 
+dialog.about-dialog {
+  width: min(44rem, calc(100% - 2rem));
+  max-height: calc(100vh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  box-shadow: 0 18px 60px rgba(7,20,40,0.35);
+  color: var(--text);
+}
+dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
+.about-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.15rem 1.3rem; color: var(--card); background: var(--midnight); }
+.about-head h2 { font-size: 1.05rem; }
+.about-body { padding: 1.3rem; overflow: auto; }
+.about-body h3 { color: var(--midnight); font-size: 0.9rem; margin: 1rem 0 0.35rem; }
+.about-body h3:first-child { margin-top: 0; }
+.about-body p, .about-body li { font-size: 0.8rem; color: var(--muted); }
+.about-body ol, .about-body ul { padding-left: 1.2rem; }
+.about-version { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; color: var(--text); font-weight: 700; }
+
 @media (max-width: 820px) {
   .wizard-grid, .source-grid { grid-template-columns: 1fr; }
   .card.full { grid-column: auto; }
@@ -256,11 +285,12 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
   .hero h1 { font-size: 1.55rem; }
   .field-grid { grid-template-columns: 1fr; }
   .field.full { grid-column: auto; }
-  .button-row, .btn { width: 100%; }
+  .button-row, .button-row > .btn { width: 100%; }
+  .path-row { flex-direction: column; }
 }
 @media print {
   body { background: var(--card); }
-  .app-header, .hero, .security-note, .wizard-grid, .action-bar, .result-tools, footer { display: none; }
+  .app-header, .hero, .security-note, .wizard-grid, .action-bar, .result-tools, footer, dialog { display: none; }
   main, .results { width: 100%; margin: 0; padding: 0; }
   .report-formatted { padding: 0; border: 0; box-shadow: none; }
   .report-markdown { display: none !important; }
@@ -274,9 +304,12 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
   <div class="header-inner">
     <div class="brand">
       <span class="brand-mark">Local</span>
-      <span class="brand-title">Monthly AI Usage Report</span>
+      <span class="brand-title">AI Usage Report</span>
     </div>
-    <div class="header-meta">Local setup wizard<br>Runs on this computer</div>
+    <div class="header-actions">
+      <div class="header-meta">Local setup wizard<br>Runs on this computer</div>
+      <button class="btn btn-header" type="button" id="open-about">About</button>
+    </div>
   </div>
 </header>
 
@@ -284,7 +317,7 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
   <section class="hero">
     <p class="eyebrow">Guided collection</p>
     <h1>Configure sources. <strong>Generate one report.</strong></h1>
-    <p>Collect the previous calendar month from Claude Code on Amazon Web Services (AWS) Bedrock, local Codex telemetry, and Circuit without editing scripts.</p>
+    <p>Collect a daily, weekly, monthly, or custom period from Claude Code on Amazon Web Services (AWS) Bedrock, local Codex telemetry, and Circuit without editing scripts.</p>
   </section>
 
   <div class="security-note" role="note">
@@ -301,17 +334,36 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
     <section class="card full" aria-labelledby="period-title">
       <div class="card-header">
         <span class="step-number">1</span>
-        <div><h2 class="card-title" id="period-title">Reporting period</h2><p class="card-subtitle">Use an exact calendar month for Codex telemetry.</p></div>
+        <div><h2 class="card-title" id="period-title">Reporting period</h2><p class="card-subtitle">Choose a preset or enter exact local dates.</p></div>
       </div>
       <div class="card-body field-grid">
         <div class="field">
-          <label for="report-month">Reporting month</label>
-          <input id="report-month" type="month" required>
+          <label for="period-mode">Period</label>
+          <select id="period-mode">
+            <option value="previous_month">Previous calendar month</option>
+            <option value="today">Today</option>
+            <option value="last_7_days">Last 7 days</option>
+            <option value="current_month">Current month to date</option>
+            <option value="custom">Custom dates</option>
+          </select>
         </div>
         <div class="field">
-          <label for="timezone">IANA timezone</label>
-          <input id="timezone" type="text" placeholder="America/Chicago" required>
-          <span class="help">Internet Assigned Numbers Authority (IANA) timezone used for month boundaries.</span>
+          <label for="timezone-select">Timezone</label>
+          <select id="timezone-select" required></select>
+          <span class="help">Sets the exact local date boundaries used by the collectors.</span>
+        </div>
+        <div id="timezone-manual-wrap" class="field full hidden">
+          <label for="timezone-manual">Enter timezone</label>
+          <input id="timezone-manual" type="text" placeholder="Example: America/Chicago">
+          <span class="help">Use a standard timezone name such as America/New_York, Europe/London, or Asia/Tokyo.</span>
+        </div>
+        <div class="field">
+          <label for="start-date">Start date</label>
+          <input id="start-date" type="date" required>
+        </div>
+        <div class="field">
+          <label for="end-date">End date</label>
+          <input id="end-date" type="date" required>
         </div>
       </div>
     </section>
@@ -319,7 +371,7 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
     <section class="card" aria-labelledby="bedrock-title">
       <div class="card-header">
         <span class="step-number">2</span>
-        <div><h2 class="card-title" id="bedrock-title">Claude Code on AWS Bedrock</h2><p class="card-subtitle">Rolling 30-day personal collector.</p></div>
+        <div><h2 class="card-title" id="bedrock-title">Claude Code on AWS Bedrock</h2><p class="card-subtitle">Portable rolling-day collector.</p></div>
       </div>
       <div class="card-body field-grid">
         <div class="field full">
@@ -329,8 +381,12 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
           </div>
         </div>
         <div class="field full">
-          <label for="bedrock-script">Collector path</label>
-          <input id="bedrock-script" type="text">
+          <label for="bedrock-script">Collector script</label>
+          <div class="path-row">
+            <input id="bedrock-script" type="text" placeholder="Select or enter the local collector path">
+            <button class="btn btn-secondary" type="button" id="browse-bedrock">Select file</button>
+          </div>
+          <span class="help">The Python collector can be stored anywhere on this device. Examples: <code>~/tools/bedrock_usage_check.py</code> on macOS/Linux or <code>C:\Users\your-name\Tools\bedrock_usage_check.py</code> on Windows.</span>
         </div>
         <fieldset class="field full">
           <legend>Credential method</legend>
@@ -377,13 +433,16 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
     <section class="card" aria-labelledby="codex-title">
       <div class="card-header">
         <span class="step-number">3</span>
-        <div><h2 class="card-title" id="codex-title">Codex and ChatGPT</h2><p class="card-subtitle">Exact local calendar-month telemetry.</p></div>
+        <div><h2 class="card-title" id="codex-title">Codex and ChatGPT</h2><p class="card-subtitle">Exact local date-range telemetry.</p></div>
       </div>
       <div class="card-body field-grid">
         <div class="field full">
           <label for="sessions-dir">Codex sessions directory</label>
-          <input id="sessions-dir" type="text">
-          <span class="help">The collector scans JavaScript Object Notation Lines (JSONL) rollouts and keeps reasoning tokens inside output totals.</span>
+          <div class="path-row">
+            <input id="sessions-dir" type="text" placeholder="Select or enter the local sessions folder">
+            <button class="btn btn-secondary" type="button" id="browse-codex">Select folder</button>
+          </div>
+          <span class="help">The folder can be anywhere. Typical examples: <code>~/.codex/sessions</code> on macOS/Linux or <code>C:\Users\your-name\.codex\sessions</code> on Windows. The collector scans JSONL rollouts and keeps reasoning tokens inside output totals.</span>
         </div>
         <div class="field full security-note" style="margin:0;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
@@ -397,13 +456,13 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
     <section class="card full" aria-labelledby="circuit-title">
       <div class="card-header">
         <span class="step-number">4</span>
-        <div><h2 class="card-title" id="circuit-title">Circuit</h2><p class="card-subtitle">Enter figures from the completed Monthly view or a permitted inference.</p></div>
+        <div><h2 class="card-title" id="circuit-title">Circuit</h2><p class="card-subtitle">Capture visible dashboard totals or enter verified figures.</p></div>
       </div>
       <div class="card-body field-grid">
         <fieldset class="field full">
           <legend>Circuit source</legend>
           <div class="choice-row">
-            <label class="choice"><input type="radio" name="circuit-mode" value="direct"> Completed Monthly view</label>
+            <label class="choice"><input type="radio" name="circuit-mode" value="direct"> Dashboard totals</label>
             <label class="choice"><input type="radio" name="circuit-mode" value="derived"> Infer QTD minus current MTD</label>
             <label class="choice"><input type="radio" name="circuit-mode" value="unavailable" checked> Not available</label>
           </div>
@@ -414,13 +473,34 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
             <input id="dashboard-url" type="text" placeholder="https://..." style="flex:1;min-width:16rem;">
             <button class="btn btn-secondary" type="button" id="open-circuit">Open dashboard</button>
           </div>
-          <span class="help">The local app cannot reuse browser single sign-on across origins. Open the dashboard, sign in, then transcribe the visible totals.</span>
+          <span class="help">Open the dashboard and sign in normally. Browser security prevents this localhost app from reading another website directly, so copy the visible dashboard page text and let the app extract the month-to-date totals.</span>
+        </div>
+
+        <div class="field full capture-panel">
+          <h3>Read month-to-date totals from copied dashboard text</h3>
+          <span class="help">On the dashboard, select the visible page text (Ctrl+A/Cmd+A) and copy it. Return here and choose <strong>Read copied dashboard text</strong>. You can also paste text below.</span>
+          <div class="button-row">
+            <button class="btn btn-secondary" type="button" id="read-circuit-clipboard">Read copied dashboard text</button>
+          </div>
+          <textarea id="circuit-page-text" placeholder="Or paste the visible Circuit dashboard text here. Sensitive text is processed only in this browser tab and is not saved."></textarea>
+          <div class="button-row">
+            <button class="btn btn-quiet" type="button" id="parse-circuit-text">Extract MTD tokens and cost</button>
+          </div>
+          <div id="circuit-capture-status" class="inline-status" role="status" aria-live="polite"></div>
         </div>
 
         <div id="circuit-direct" class="field full hidden">
           <div class="field-grid">
+            <div class="field full">
+              <label for="circuit-window-kind">Dashboard window</label>
+              <select id="circuit-window-kind">
+                <option value="month_to_date">Month-to-date through retrieval date</option>
+                <option value="selected_period">Selected reporting period</option>
+                <option value="completed_month">Completed Monthly view</option>
+              </select>
+            </div>
             <div class="field">
-              <label for="circuit-tokens">Monthly tokens</label>
+              <label for="circuit-tokens">Tokens used</label>
               <input id="circuit-tokens" type="text" inputmode="numeric">
             </div>
             <div class="field">
@@ -457,7 +537,7 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
             <div class="field full sensitive">
               <div class="check-row">
                 <input id="circuit-confirmed" type="checkbox">
-                <label for="circuit-confirmed">I confirm these values came from the visible Circuit Usage Dashboard for the stated Monthly view, or from the stated quarter-to-date and month-to-date views.</label>
+                <label for="circuit-confirmed">I reviewed these values against the visible Circuit Usage Dashboard and confirm the stated source window.</label>
               </div>
             </div>
             <div class="field full">
@@ -496,7 +576,9 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
       </div>
       <div class="button-row">
         <button class="btn btn-quiet" type="button" id="copy-report">Copy Markdown</button>
-        <button class="btn btn-secondary" type="button" id="download-report">Download report</button>
+        <button class="btn btn-quiet" type="button" id="download-report">Download Markdown</button>
+        <button class="btn btn-secondary" type="button" id="download-word">Download Word (.doc)</button>
+        <button class="btn btn-secondary" type="button" id="print-report">Print / Save PDF</button>
       </div>
     </div>
     <div id="formatted-output" class="report-panel report-formatted" role="tabpanel" aria-labelledby="view-formatted"></div>
@@ -504,15 +586,47 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
   </section>
 </main>
 
+<dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title">
+  <div class="about-head">
+    <h2 id="about-title">About AI Usage Report</h2>
+    <button class="btn btn-header" type="button" id="close-about">Close</button>
+  </div>
+  <div class="about-body">
+    <div class="about-version"><span>Version <span id="about-version">1.1.0</span></span><span>Release date <span id="about-date">2026-08-05</span></span></div>
+    <h3>How to use</h3>
+    <ol>
+      <li>Choose a preset reporting period or exact start and end dates, then select your timezone.</li>
+      <li>Select the local Bedrock collector script and Codex sessions folder. Use an AWS profile when possible.</li>
+      <li>Open Circuit, copy the visible dashboard page text, extract the month-to-date totals, and verify them.</li>
+      <li>Generate the report, review every source caveat, then export Markdown, Word-compatible format, or PDF.</li>
+    </ol>
+    <h3>Release notes</h3>
+    <ul>
+      <li>Added daily, weekly, month-to-date, previous-month, and custom date ranges.</li>
+      <li>Added timezone selection with a manual-entry option and portable local path pickers.</li>
+      <li>Added Circuit month-to-date extraction from copied dashboard text.</li>
+      <li>Added formatted Word-compatible and Print / Save PDF exports.</li>
+    </ul>
+    <h3>Author</h3>
+    <p>Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a></p>
+    <h3>Important boundaries</h3>
+    <p>Bedrock collection is a rolling number of days ending on the retrieval date and may not match a historical custom range. Local Codex telemetry is not authoritative ChatGPT billing. Circuit values must be reviewed by the user because browser same-origin controls prevent automatic reading of an authenticated dashboard in another tab.</p>
+  </div>
+</dialog>
+
 <footer>
-  Sources: personal Bedrock collector, local Codex session telemetry, and user-verified Circuit dashboard data. Generated locally; methodology: monthly-ai-usage-report skill.
+  Sources: personal Bedrock collector, local Codex session telemetry, and user-verified Circuit dashboard data. Generated locally; methodology: monthly-ai-usage-report skill.<br>
+  Version <span id="footer-version">1.1.0</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
 </footer>
 
 <script>
 (function () {
   'use strict';
   var latestReport = '';
-  var latestMonth = '';
+  var latestPeriod = '';
+  var defaultPreviousStart = '';
+  var defaultPreviousEnd = '';
+  var circuitCaptureMethod = 'direct dashboard entry';
 
   function byId(id) { return document.getElementById(id); }
   function selected(name) {
@@ -539,6 +653,54 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
     node.className = 'run-status' + (type ? ' ' + type : '');
   }
 
+  function isoDate(value) {
+    var year = value.getFullYear();
+    var month = String(value.getMonth() + 1).padStart(2, '0');
+    var day = String(value.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function todayForTimezone() {
+    try {
+      var parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: currentTimezone(), year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(new Date());
+      var values = {};
+      parts.forEach(function (part) { values[part.type] = part.value; });
+      return new Date(Number(values.year), Number(values.month) - 1, Number(values.day));
+    } catch (_error) {
+      return new Date();
+    }
+  }
+
+  function applyPeriodPreset() {
+    var mode = byId('period-mode').value;
+    var today = todayForTimezone();
+    var start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    var end = new Date(start.getTime());
+    if (mode === 'previous_month') {
+      byId('start-date').value = defaultPreviousStart;
+      byId('end-date').value = defaultPreviousEnd;
+      return;
+    }
+    if (mode === 'last_7_days') start.setDate(start.getDate() - 6);
+    if (mode === 'current_month') start = new Date(today.getFullYear(), today.getMonth(), 1);
+    if (mode !== 'custom') {
+      byId('start-date').value = isoDate(start);
+      byId('end-date').value = isoDate(end);
+    }
+  }
+
+  function currentTimezone() {
+    return byId('timezone-select').value === '__manual__'
+      ? byId('timezone-manual').value.trim()
+      : byId('timezone-select').value;
+  }
+
+  function updateTimezoneMode() {
+    byId('timezone-manual-wrap').classList.toggle('hidden', byId('timezone-select').value !== '__manual__');
+  }
+
   function loadDefaults() {
     fetch('/api/defaults', { cache: 'no-store' })
       .then(function (response) {
@@ -546,11 +708,37 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
         return response.json();
       })
       .then(function (data) {
-        byId('report-month').value = data.month || '';
-        byId('timezone').value = data.timezone || 'UTC';
+        defaultPreviousStart = data.start_date || '';
+        defaultPreviousEnd = data.end_date || '';
+        byId('start-date').value = defaultPreviousStart;
+        byId('end-date').value = defaultPreviousEnd;
+        var timezoneSelect = byId('timezone-select');
+        var browserTimezone = '';
+        try { browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (_error) { browserTimezone = ''; }
+        var preferredTimezone = browserTimezone || data.timezone || 'UTC';
+        (data.timezones || []).forEach(function (name) {
+          var option = document.createElement('option');
+          option.value = name;
+          option.textContent = name;
+          timezoneSelect.appendChild(option);
+        });
+        var manualOption = document.createElement('option');
+        manualOption.value = '__manual__';
+        manualOption.textContent = 'Enter another timezone...';
+        timezoneSelect.appendChild(manualOption);
+        if ((data.timezones || []).indexOf(preferredTimezone) !== -1) {
+          timezoneSelect.value = preferredTimezone;
+        } else {
+          timezoneSelect.value = '__manual__';
+          byId('timezone-manual').value = preferredTimezone;
+        }
+        updateTimezoneMode();
         byId('bedrock-script').value = data.bedrock_script || '';
         byId('lambda-url').value = data.bedrock_lambda_url || '';
         byId('sessions-dir').value = data.codex_sessions_dir || '';
+        byId('about-version').textContent = data.version || '1.1.0';
+        byId('footer-version').textContent = data.version || '1.1.0';
+        byId('about-date').textContent = data.release_date || '2026-08-05';
         var profile = byId('aws-profile');
         (data.aws_profiles || []).forEach(function (name) {
           var option = document.createElement('option');
@@ -566,8 +754,9 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
     var credentialMode = selected('credential-mode');
     var circuitMode = selected('circuit-mode');
     return {
-      month: byId('report-month').value,
-      timezone: byId('timezone').value.trim(),
+      start_date: byId('start-date').value,
+      end_date: byId('end-date').value,
+      timezone: currentTimezone(),
       bedrock: {
         enabled: byId('bedrock-enabled').checked,
         script: byId('bedrock-script').value.trim(),
@@ -582,6 +771,8 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
       circuit: {
         mode: circuitMode,
         dashboard_url: byId('dashboard-url').value.trim(),
+        window_kind: byId('circuit-window-kind').value,
+        capture_method: circuitCaptureMethod,
         tokens: byId('circuit-tokens').value.trim(),
         cost: byId('circuit-cost').value.trim(),
         qtd_tokens: byId('qtd-tokens').value.trim(),
@@ -610,7 +801,7 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
     if (source.failure) {
       detail.textContent = source.failure.category + ': ' + source.failure.message;
     } else {
-      detail.textContent = source.window === 'rolling 30 days' ? 'Rolling 30-day source collected.' : 'Source collected.';
+      detail.textContent = (source.window || 'Selected source window') + ' collected.';
     }
     card.appendChild(heading);
     card.appendChild(state);
@@ -773,7 +964,7 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
 
   function renderResult(result) {
     latestReport = result.report || '';
-    latestMonth = result.reporting_month || 'report';
+    latestPeriod = result.download_slug || 'report';
     byId('report-output').textContent = latestReport;
     renderMarkdown(latestReport, byId('formatted-output'));
     setReportView('formatted');
@@ -829,11 +1020,40 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
     var url = URL.createObjectURL(blob);
     var link = document.createElement('a');
     link.href = url;
-    link.download = 'ai-usage-report-' + latestMonth + '.md';
+    link.download = 'ai-usage-report-' + latestPeriod + '.md';
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+  }
+
+  function downloadWord() {
+    if (!latestReport) return;
+    var reportHtml = byId('formatted-output').innerHTML;
+    var styles = '<style>' +
+      'body{font-family:Arial,sans-serif;color:#1B2A3D;font-size:11pt;line-height:1.45;margin:36pt}' +
+      'h1,h2,h3,strong{color:#0D274D}h1{font-size:22pt}h2{font-size:15pt;border-bottom:2px solid #00BCEB;padding-bottom:5pt}' +
+      'table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12pt 0}th{background:#0D274D;color:#fff;text-align:left}' +
+      'th,td{border:1px solid #DDE3EA;padding:7pt;vertical-align:top;overflow-wrap:anywhere}th:nth-child(1){width:17%}th:nth-child(2){width:25%}th:nth-child(3){width:40%}th:nth-child(4){width:18%}' +
+      'li,p{font-size:10pt}.report-table-wrap{width:100%}' +
+      '</style>';
+    var documentHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>AI Usage Report</title>' + styles + '</head><body>' + reportHtml + '</body></html>';
+    var blob = new Blob(['\ufeff', documentHtml], { type: 'application/msword;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = 'ai-usage-report-' + latestPeriod + '.doc';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    status('Word-compatible report downloaded.', 'success');
+  }
+
+  function printReport() {
+    if (!latestReport) return;
+    setReportView('formatted');
+    window.print();
   }
 
   function openCircuit() {
@@ -847,16 +1067,111 @@ footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.
     }
   }
 
+  function captureStatus(message, type) {
+    var node = byId('circuit-capture-status');
+    node.textContent = message;
+    node.className = 'inline-status' + (type ? ' ' + type : '');
+  }
+
+  function matchDashboardValue(text, labelPattern, valuePattern) {
+    var forward = new RegExp(labelPattern + '[\\s\\S]{0,160}?(?:month[ -]?to[ -]?date|mtd)[\\s\\S]{0,100}?(' + valuePattern + ')', 'i');
+    var reverse = new RegExp('(?:month[ -]?to[ -]?date|mtd)[\\s\\S]{0,100}?' + labelPattern + '[\\s\\S]{0,100}?(' + valuePattern + ')', 'i');
+    var labelFirstValue = new RegExp(labelPattern + '[\\s\\S]{0,100}?(' + valuePattern + ')[\\s\\S]{0,100}?(?:month[ -]?to[ -]?date|mtd)', 'i');
+    return text.match(forward) || text.match(reverse) || text.match(labelFirstValue);
+  }
+
+  function parseCircuitDashboardText(text) {
+    var normalized = String(text || '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ');
+    var tokenMatch = matchDashboardValue(normalized, 'tokens?\\s*(?:used|usage)?', '[0-9][0-9,]*');
+    var costMatch = matchDashboardValue(normalized, 'approximate\\s+cost', '\\$?\\s*[0-9][0-9,]*(?:\\.[0-9]{1,4})?');
+    if (!tokenMatch && !costMatch) {
+      captureStatus('No month-to-date Tokens Used or Approximate Cost values were found. Paste the card text or enter the figures manually.', 'error');
+      return;
+    }
+    if (tokenMatch) byId('circuit-tokens').value = tokenMatch[1].replace(/[^0-9]/g, '');
+    if (costMatch) byId('circuit-cost').value = costMatch[1].replace(/[$,\s]/g, '');
+    var direct = document.querySelector('input[name="circuit-mode"][value="direct"]');
+    direct.checked = true;
+    byId('circuit-window-kind').value = 'month_to_date';
+    circuitCaptureMethod = 'parsed from user-copied dashboard text';
+    updateCircuitMode();
+    var found = [];
+    if (tokenMatch) found.push('tokens');
+    if (costMatch) found.push('approximate cost');
+    captureStatus('Extracted ' + found.join(' and ') + '. Review the values below and check the confirmation box.', 'success');
+  }
+
+  function readCircuitClipboard() {
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      captureStatus('Clipboard reading is unavailable in this browser. Paste the dashboard text into the box instead.', 'error');
+      return;
+    }
+    navigator.clipboard.readText()
+      .then(function (text) {
+        byId('circuit-page-text').value = text;
+        parseCircuitDashboardText(text);
+      })
+      .catch(function () {
+        captureStatus('Clipboard permission was denied. Paste the dashboard text into the box instead.', 'error');
+      });
+  }
+
+  function selectPath(kind, targetId) {
+    var button = kind === 'file' ? byId('browse-bedrock') : byId('browse-codex');
+    button.disabled = true;
+    fetch('/api/select-path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: kind })
+    })
+      .then(function (response) {
+        return response.json().then(function (body) {
+          if (!response.ok) throw new Error(body.error || 'Could not open the local path selector.');
+          return body;
+        });
+      })
+      .then(function (result) {
+        if (result.path) byId(targetId).value = result.path;
+      })
+      .catch(function (error) { status(error.message + ' Enter the path manually.', 'error'); })
+      .finally(function () { button.disabled = false; });
+  }
+
+  function openAbout() {
+    var dialog = byId('about-dialog');
+    if (dialog.showModal) dialog.showModal();
+    else dialog.setAttribute('open', '');
+  }
+
+  function closeAbout() {
+    var dialog = byId('about-dialog');
+    if (dialog.close) dialog.close();
+    else dialog.removeAttribute('open');
+  }
+
   document.querySelectorAll('input[name="credential-mode"]').forEach(function (node) {
     node.addEventListener('change', updateCredentialMode);
   });
   document.querySelectorAll('input[name="circuit-mode"]').forEach(function (node) {
     node.addEventListener('change', updateCircuitMode);
   });
+  byId('period-mode').addEventListener('change', applyPeriodPreset);
+  ['start-date', 'end-date'].forEach(function (id) {
+    byId(id).addEventListener('change', function () { byId('period-mode').value = 'custom'; });
+  });
+  byId('timezone-select').addEventListener('change', updateTimezoneMode);
   byId('run-report').addEventListener('click', runReport);
   byId('copy-report').addEventListener('click', copyReport);
   byId('download-report').addEventListener('click', downloadReport);
+  byId('download-word').addEventListener('click', downloadWord);
+  byId('print-report').addEventListener('click', printReport);
   byId('open-circuit').addEventListener('click', openCircuit);
+  byId('read-circuit-clipboard').addEventListener('click', readCircuitClipboard);
+  byId('parse-circuit-text').addEventListener('click', function () { parseCircuitDashboardText(byId('circuit-page-text').value); });
+  byId('browse-bedrock').addEventListener('click', function () { selectPath('file', 'bedrock-script'); });
+  byId('browse-codex').addEventListener('click', function () { selectPath('directory', 'sessions-dir'); });
+  byId('open-about').addEventListener('click', openAbout);
+  byId('close-about').addEventListener('click', closeAbout);
   byId('view-formatted').addEventListener('click', function () { setReportView('formatted'); });
   byId('view-markdown').addEventListener('click', function () { setReportView('markdown'); });
   updateCredentialMode();

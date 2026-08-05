@@ -17,14 +17,14 @@ import subprocess
 import sys
 import threading
 import webbrowser
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, reset_tzpath
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones, reset_tzpath
 
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
@@ -46,6 +46,8 @@ DEFAULT_BEDROCK_SCRIPT = Path(
 )
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
+APP_VERSION = "1.1.0"
+RELEASE_DATE = "2026-08-05"
 
 
 def local_timezone_name() -> str:
@@ -82,12 +84,126 @@ def validate_month(value: str) -> str:
     return value
 
 
+def validate_date(value: str, label: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"{label} must use YYYY-MM-DD.") from exc
+
+
+def previous_month_dates(now: datetime) -> tuple[date, date]:
+    year = now.year if now.month > 1 else now.year - 1
+    month = now.month - 1 if now.month > 1 else 12
+    start = date(year, month, 1)
+    end = date(now.year, now.month, 1) - timedelta(days=1)
+    return start, end
+
+
+def format_period_label(start: date, end: date) -> str:
+    if start == end:
+        return f"{start.strftime('%B')} {start.day}, {start.year}"
+    next_day = end + timedelta(days=1)
+    if start.day == 1 and next_day.day == 1 and start.month == end.month:
+        return start.strftime("%B %Y")
+    if start.year == end.year and start.month == end.month:
+        return f"{start.strftime('%B')} {start.day}-{end.day}, {start.year}"
+    return f"{start.isoformat()} to {end.isoformat()}"
+
+
+def resolve_period(payload: dict[str, Any], timezone: ZoneInfo) -> dict[str, Any]:
+    now = datetime.now(timezone)
+    if payload.get("start_date") or payload.get("end_date"):
+        start = validate_date(str(payload.get("start_date") or ""), "Start date")
+        end = validate_date(str(payload.get("end_date") or ""), "End date")
+    else:
+        month = validate_month(str(payload.get("month") or previous_month(now)))
+        parsed = datetime.strptime(month, "%Y-%m")
+        start = date(parsed.year, parsed.month, 1)
+        next_month = date(parsed.year + (1 if parsed.month == 12 else 0), parsed.month % 12 + 1, 1)
+        end = next_month - timedelta(days=1)
+    if end < start:
+        raise ValueError("End date must be on or after start date.")
+    days = (end - start).days + 1
+    if days > 366:
+        raise ValueError("Reporting ranges cannot exceed 366 days.")
+    previous_start, previous_end = previous_month_dates(now)
+    return {
+        "start_date": start,
+        "end_date": end,
+        "days": days,
+        "label": format_period_label(start, end),
+        "slug": start.isoformat() if start == end else f"{start.isoformat()}-to-{end.isoformat()}",
+        "is_previous_calendar_month": start == previous_start and end == previous_end,
+        "ends_today": end == now.date(),
+    }
+
+
 def validate_timezone(value: str) -> str:
     try:
         ZoneInfo(value)
     except ZoneInfoNotFoundError as exc:
         raise ValueError(f"Unknown IANA timezone: {value}") from exc
     return value
+
+
+def resolve_local_path(value: str, default: Path) -> Path:
+    path = Path(value or str(default)).expanduser()
+    return path if path.is_absolute() else (SKILL_DIR / path).resolve()
+
+
+def select_local_path(kind: str) -> str | None:
+    if kind not in {"file", "directory"}:
+        raise ValueError("Path selection kind must be file or directory.")
+    if sys.platform == "darwin":
+        expression = (
+            'POSIX path of (choose file with prompt "Select the Bedrock collector script")'
+            if kind == "file"
+            else 'POSIX path of (choose folder with prompt "Select the Codex sessions folder")'
+        )
+        completed = subprocess.run(
+            ["osascript", "-e", expression], check=False, capture_output=True, text=True
+        )
+        if completed.returncode:
+            return None
+        return completed.stdout.strip() or None
+    if sys.platform == "win32":
+        if kind == "file":
+            script = (
+                "Add-Type -AssemblyName System.Windows.Forms; "
+                "$d=New-Object System.Windows.Forms.OpenFileDialog; "
+                "$d.Filter='Python scripts (*.py)|*.py|All files (*.*)|*.*'; "
+                "if($d.ShowDialog() -eq 'OK'){[Console]::Write($d.FileName)}"
+            )
+        else:
+            script = (
+                "Add-Type -AssemblyName System.Windows.Forms; "
+                "$d=New-Object System.Windows.Forms.FolderBrowserDialog; "
+                "if($d.ShowDialog() -eq 'OK'){[Console]::Write($d.SelectedPath)}"
+            )
+        completed = subprocess.run(
+            ["powershell", "-NoProfile", "-STA", "-Command", script],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return completed.stdout.strip() or None
+
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        selected = (
+            filedialog.askopenfilename(filetypes=[("Python scripts", "*.py"), ("All files", "*")])
+            if kind == "file"
+            else filedialog.askdirectory()
+        )
+        root.destroy()
+        return selected or None
+    except (ImportError, OSError, RuntimeError) as exc:
+        raise ValueError("Native path selection is unavailable; enter the path manually.") from exc
 
 
 def available_profiles() -> list[str]:
@@ -198,7 +314,9 @@ def bedrock_failure(message: str, retrieved: str) -> dict[str, Any]:
     return failure("collector_error", message, "Review the collector output and AWS configuration.", retrieved)
 
 
-def collect_bedrock(config: dict[str, Any], timezone: ZoneInfo) -> dict[str, Any]:
+def collect_bedrock(
+    config: dict[str, Any], timezone: ZoneInfo, period: dict[str, Any]
+) -> dict[str, Any]:
     retrieved = datetime.now(timezone).isoformat()
     if not config.get("enabled", True):
         return failure("disabled", "Bedrock collection was disabled.", "Enable it to include Bedrock usage.", retrieved)
@@ -210,7 +328,7 @@ def collect_bedrock(config: dict[str, Any], timezone: ZoneInfo) -> dict[str, Any
             retrieved,
         )
 
-    script = Path(str(config.get("script") or DEFAULT_BEDROCK_SCRIPT)).expanduser()
+    script = resolve_local_path(str(config.get("script") or ""), DEFAULT_BEDROCK_SCRIPT)
     if not script.is_file():
         return failure(
             "collector_missing",
@@ -219,7 +337,8 @@ def collect_bedrock(config: dict[str, Any], timezone: ZoneInfo) -> dict[str, Any
             retrieved,
         )
 
-    args = [sys.executable, str(script), "-d", "30", "--json"]
+    days = int(period["days"])
+    args = [sys.executable, str(script), "-d", str(days), "--json"]
     profile = str(config.get("profile") or "").strip()
     access_key = str(config.get("access_key_id") or "").strip()
     secret_key = str(config.get("secret_access_key") or "")
@@ -269,22 +388,30 @@ def collect_bedrock(config: dict[str, Any], timezone: ZoneInfo) -> dict[str, Any
     return {
         "status": "verified",
         "source": "personal Bedrock usage collector",
-        "window": "rolling 30 days",
+        "window": f"rolling {days} day{'s' if days != 1 else ''}",
         "window_end": retrieved,
+        "matches_selected_period": bool(period["ends_today"]),
         "retrieved_at": retrieved,
         "data": data,
     }
 
 
-def collect_codex(config: dict[str, Any], month: str, timezone_name: str) -> dict[str, Any]:
+def collect_codex(
+    config: dict[str, Any], period: dict[str, Any], timezone_name: str
+) -> dict[str, Any]:
     timezone = ZoneInfo(timezone_name)
     retrieved = datetime.now(timezone).isoformat()
-    sessions_dir = Path(str(config.get("sessions_dir") or Path.home() / ".codex" / "sessions")).expanduser()
+    sessions_dir = resolve_local_path(
+        str(config.get("sessions_dir") or "~/.codex/sessions"),
+        Path.home() / ".codex" / "sessions",
+    )
     args = [
         sys.executable,
         str(CODEX_COLLECTOR),
-        "--month",
-        month,
+        "--start-date",
+        period["start_date"].isoformat(),
+        "--end-date",
+        period["end_date"].isoformat(),
         "--timezone",
         timezone_name,
         "--sessions-dir",
@@ -302,7 +429,7 @@ def collect_codex(config: dict[str, Any], month: str, timezone_name: str) -> dic
         "status": "verified",
         "source": "local Codex session telemetry",
         "retrieved_at": data.get("retrieved_at", retrieved),
-        "window": data.get("reporting_window_local"),
+        "window": f"{period['label']} exact local range",
         "data": data,
     }
 
@@ -333,27 +460,38 @@ def parse_money(value: Any, label: str) -> Decimal | None:
     return parsed
 
 
-def collect_circuit(config: dict[str, Any], report_month: str, timezone: ZoneInfo) -> dict[str, Any]:
+def collect_circuit(
+    config: dict[str, Any], period: dict[str, Any], timezone: ZoneInfo
+) -> dict[str, Any]:
     retrieved = datetime.now(timezone).isoformat()
     mode = str(config.get("mode") or "unavailable")
     if mode == "unavailable":
         return failure(
             "source_not_provided",
-            "No Circuit Monthly-view totals or export were provided.",
-            "Enter the completed month totals or attach a fresh dashboard screenshot/export to the Codex task.",
+            "No Circuit dashboard totals or export were provided.",
+            "Open the dashboard and provide verified totals, copied dashboard text, or a fresh screenshot/export.",
             retrieved,
         )
 
     try:
         if mode == "direct":
             if not config.get("confirmed"):
-                raise ValueError("Confirm that the Circuit figures were transcribed from the completed Monthly view.")
+                raise ValueError("Confirm that the Circuit figures came from the visible dashboard.")
             tokens = parse_integer(config.get("tokens"), "Circuit tokens")
             cost = parse_money(config.get("cost"), "Circuit approximate cost")
+            window_kind = str(config.get("window_kind") or "month_to_date")
+            if window_kind == "month_to_date":
+                window_label = f"Month-to-date through {retrieved[:10]}"
+            elif window_kind == "selected_period":
+                window_label = str(period["label"])
+            elif window_kind == "completed_month":
+                window_label = f"Completed Monthly view for {period['label']}"
+            else:
+                raise ValueError("Unknown Circuit source window.")
             return {
                 "status": "verified",
-                "source": "user-transcribed Circuit Monthly view",
-                "window": report_month,
+                "source": "user-verified Circuit dashboard",
+                "window": window_label,
                 "retrieved_at": retrieved,
                 "data": {
                     "tokens": tokens,
@@ -361,7 +499,7 @@ def collect_circuit(config: dict[str, Any], report_month: str, timezone: ZoneInf
                     "comparison": str(config.get("comparison") or "").strip(),
                     "cross_charge": str(config.get("cross_charge") or "").strip(),
                     "dashboard_url": str(config.get("dashboard_url") or "").strip(),
-                    "method": "direct monthly view",
+                    "method": str(config.get("capture_method") or "direct dashboard entry"),
                 },
             }
 
@@ -373,8 +511,7 @@ def collect_circuit(config: dict[str, Any], report_month: str, timezone: ZoneInf
 
         if (datetime.now(timezone).month - 1) % 3 != 1:
             raise ValueError("QTD minus MTD is only allowed during the second month of a calendar quarter.")
-        expected_previous = previous_month(datetime.now(timezone))
-        if report_month != expected_previous:
+        if not period["is_previous_calendar_month"]:
             raise ValueError("QTD minus MTD can only isolate the immediately preceding month.")
 
         qtd_tokens = parse_integer(config.get("qtd_tokens"), "Quarter-to-date tokens")
@@ -391,7 +528,7 @@ def collect_circuit(config: dict[str, Any], report_month: str, timezone: ZoneInf
         return {
             "status": "inference",
             "source": "user-transcribed Circuit QTD and current MTD views",
-            "window": report_month,
+            "window": str(period["label"]),
             "retrieved_at": retrieved,
             "data": {
                 "tokens": qtd_tokens - mtd_tokens,
@@ -407,7 +544,7 @@ def collect_circuit(config: dict[str, Any], report_month: str, timezone: ZoneInf
         return failure(
             "invalid_or_inconsistent_data",
             str(exc),
-            "Use the completed month Monthly-view tooltip/export and do not reconcile contradictions by assumption.",
+            "Use a visible dashboard window or export and do not reconcile contradictions by assumption.",
             retrieved,
         )
 
@@ -442,11 +579,12 @@ def retrieval_date(source: dict[str, Any]) -> str:
     return value[:10] if len(value) >= 10 else "unavailable"
 
 
-def build_report(month: str, timezone_name: str, sources: dict[str, dict[str, Any]]) -> str:
+def build_report(
+    period: dict[str, Any], timezone_name: str, sources: dict[str, dict[str, Any]]
+) -> str:
     timezone = ZoneInfo(timezone_name)
     retrieved = datetime.now(timezone)
-    month_date = datetime.strptime(month, "%Y-%m")
-    month_label = month_date.strftime("%B %Y")
+    period_label = str(period["label"])
     verified_count = sum(source.get("status") in {"verified", "inference"} for source in sources.values())
     status = "Complete" if verified_count == 3 else f"Partial — {3 - verified_count} source(s) unavailable"
 
@@ -513,17 +651,22 @@ def build_report(month: str, timezone_name: str, sources: dict[str, dict[str, An
         hit_text = f"{float(hit_rate) * 100:.1f}%" if hit_rate is not None else "unavailable"
         codex_sentence = (
             f"Local Codex telemetry recorded **{format_integer(cod_data.get('sessions'))} sessions** and "
-            f"**{format_integer(usage.get('total_tokens'))} total tokens**, with a **{hit_text} cache-hit rate**."
+            f"**{format_integer(usage.get('total_tokens'))} total tokens**; the cache-hit rate was **{hit_text}**."
         )
-        finding_lines.append(
-            f"- **Inference — repeated-context efficiency:** The **{hit_text}** Codex cache-hit rate suggests strong reuse; it does not establish subscription savings."
-        )
+        if hit_rate is not None:
+            finding_lines.append(
+                f"- **Inference — repeated-context efficiency:** The **{hit_text}** Codex cache-hit rate suggests strong reuse; it does not establish subscription savings."
+            )
 
     if bedrock.get("status") == "verified":
         summary = (bedrock.get("data") or {}).get("summary") or {}
         finding_lines.append(
-            f"- **Bedrock rolling window:** **{format_integer(summary.get('api_calls'))} requests** generated an **estimated {format_money(summary.get('total_cost'))}** over 30 days ending {retrieved:%B %d, %Y}."
+            f"- **Bedrock rolling window:** **{format_integer(summary.get('api_calls'))} requests** generated an **estimated {format_money(summary.get('total_cost'))}** over {clean_cell(bedrock.get('window', 'the collector window'))} ending {retrieved:%B %d, %Y}."
         )
+        if not bedrock.get("matches_selected_period"):
+            finding_lines.append(
+                "- **Window caveat:** The Bedrock collector ends on the retrieval date, so it does not exactly match the selected historical period."
+            )
     if circuit.get("status") == "inference":
         finding_lines.append(
             f"- **Inference — Circuit monthly value:** {clean_cell((circuit.get('data') or {}).get('arithmetic', 'QTD - MTD'))}; verify the direct Monthly tooltip before sharing."
@@ -547,14 +690,14 @@ def build_report(month: str, timezone_name: str, sources: dict[str, dict[str, An
             risk_lines.append(f"- **Circuit cross-charge statement:** {cross_charge}")
     risk_lines.append("- **Billing boundary:** Local Codex telemetry does not represent complete ChatGPT subscription or billing usage.")
 
-    bed_window = f"Rolling 30 days ending {retrieved:%Y-%m-%d}; retrieved {retrieval_date(bedrock)}"
-    cod_window = f"{month_label} calendar month; retrieved {retrieval_date(codex)}"
-    cir_window = f"{month_label} Monthly view; retrieved {retrieval_date(circuit)}"
+    bed_window = f"{clean_cell(bedrock.get('window', 'rolling collector window')).capitalize()} ending {retrieved:%Y-%m-%d}; retrieved {retrieval_date(bedrock)}"
+    cod_window = f"{period_label} exact local range; retrieved {retrieval_date(codex)}"
+    cir_window = f"{clean_cell(circuit.get('window', period_label))}; retrieved {retrieval_date(circuit)}"
     action = "No management action is required on verified figures; complete missing sources before external sharing."
 
-    report = f"""# AI Usage Report — {month_label}
+    report = f"""# AI Usage Report — {period_label}
 
-**Reporting period:** {month_label} | **Timezone:** {timezone_name} | **Retrieved:** {retrieved:%Y-%m-%d}
+**Reporting period:** {period_label} ({period['start_date'].isoformat()} to {period['end_date'].isoformat()}) | **Timezone:** {timezone_name} | **Retrieved:** {retrieved:%Y-%m-%d}
 **Status:** {status}
 
 ## Verified usage; gaps remain visible
@@ -577,7 +720,7 @@ def build_report(month: str, timezone_name: str, sources: dict[str, dict[str, An
 
 ## Draft email
 
-**Subject: {month_label} AI usage — {verified_count} of 3 sources verified**
+**Subject: {period_label} AI usage — {verified_count} of 3 sources verified**
 
 {codex_sentence} Bedrock costs remain estimates, Circuit costs remain approximate/informational, and provider token units are not directly comparable.
 
@@ -589,15 +732,20 @@ def build_report(month: str, timezone_name: str, sources: dict[str, dict[str, An
 def process_report(payload: dict[str, Any]) -> dict[str, Any]:
     timezone_name = validate_timezone(str(payload.get("timezone") or local_timezone_name()))
     timezone = ZoneInfo(timezone_name)
-    month = validate_month(str(payload.get("month") or previous_month(datetime.now(timezone))))
+    period = resolve_period(payload, timezone)
     sources = {
-        "bedrock": collect_bedrock(payload.get("bedrock") or {}, timezone),
-        "codex": collect_codex(payload.get("codex") or {}, month, timezone_name),
-        "circuit": collect_circuit(payload.get("circuit") or {}, month, timezone),
+        "bedrock": collect_bedrock(payload.get("bedrock") or {}, timezone, period),
+        "codex": collect_codex(payload.get("codex") or {}, period, timezone_name),
+        "circuit": collect_circuit(payload.get("circuit") or {}, period, timezone),
     }
-    report = build_report(month, timezone_name, sources)
+    report = build_report(period, timezone_name, sources)
     return {
-        "reporting_month": month,
+        "reporting_period": {
+            "start_date": period["start_date"].isoformat(),
+            "end_date": period["end_date"].isoformat(),
+            "label": period["label"],
+        },
+        "download_slug": period["slug"],
         "timezone": timezone_name,
         "sources": sources,
         "report": report,
@@ -606,7 +754,7 @@ def process_report(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 class ReportHandler(BaseHTTPRequestHandler):
-    server_version = "MonthlyAIUsageReport/1.0"
+    server_version = f"MonthlyAIUsageReport/{APP_VERSION}"
 
     def log_message(self, _format: str, *_args: Any) -> None:
         return
@@ -647,22 +795,34 @@ class ReportHandler(BaseHTTPRequestHandler):
         if self.path == "/api/defaults":
             timezone_name = local_timezone_name()
             timezone = ZoneInfo(timezone_name)
+            period_start, period_end = previous_month_dates(datetime.now(timezone))
+            default_script = (
+                "scripts/bedrock_usage_check.py"
+                if BUNDLED_BEDROCK_SCRIPT.is_file()
+                else "~/.bedrock/bedrock_usage_check.py"
+            )
             self.send_json(
                 HTTPStatus.OK,
                 {
-                    "month": previous_month(datetime.now(timezone)),
+                    "start_date": period_start.isoformat(),
+                    "end_date": period_end.isoformat(),
                     "timezone": timezone_name,
-                    "bedrock_script": str(DEFAULT_BEDROCK_SCRIPT),
+                    "timezones": sorted(available_timezones()),
+                    "bedrock_script": default_script,
+                    "bedrock_script_example": "~/tools/bedrock_usage_check.py",
                     "bedrock_lambda_url": configured_lambda_url(DEFAULT_BEDROCK_SCRIPT),
                     "aws_profiles": available_profiles(),
-                    "codex_sessions_dir": str(Path.home() / ".codex" / "sessions"),
+                    "codex_sessions_dir": "~/.codex/sessions",
+                    "codex_sessions_example": "~/.codex/sessions",
+                    "version": APP_VERSION,
+                    "release_date": RELEASE_DATE,
                 },
             )
             return
         self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
 
     def do_POST(self) -> None:  # noqa: N802
-        if self.path != "/api/run":
+        if self.path not in {"/api/run", "/api/select-path"}:
             self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
             return
         origin = self.headers.get("Origin", "")
@@ -681,6 +841,10 @@ class ReportHandler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length))
             if not isinstance(payload, dict):
                 raise ValueError("Request must be a JSON object.")
+            if self.path == "/api/select-path":
+                selected = select_local_path(str(payload.get("kind") or ""))
+                self.send_json(HTTPStatus.OK, {"path": selected, "cancelled": selected is None})
+                return
             result = process_report(payload)
         except (json.JSONDecodeError, ValueError) as exc:
             self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})

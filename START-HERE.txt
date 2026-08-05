@@ -17,15 +17,21 @@ Start on Windows
 Use the app
 -----------
 The launcher opens the app in your default browser at http://127.0.0.1:8765/.
-Choose an AWS profile or enter temporary AWS credentials, select the Codex
-sessions folder, and transcribe Circuit Monthly-view totals. Generate the
-report, then use the formatted view for review or the Markdown view for copying.
+Choose a daily, weekly, monthly, or custom reporting range and your timezone.
+Select a Bedrock collector script stored anywhere on this device, choose an AWS
+profile or enter temporary AWS credentials, and select the local Codex sessions
+folder. Open Circuit, copy the visible dashboard page text, then use the
+app to extract and verify month-to-date tokens and approximate cost. Generate the
+report, review the formatted table, and export Markdown, Word-compatible .doc,
+or Print / Save PDF.
 
 Security and limitations
 ------------------------
 - The server is available only on this computer and stops when its terminal closes.
 - AWS credentials stay in memory for one collector run and are never saved.
 - Confirm the displayed AWS Lambda URL before approving collector egress.
-- Circuit single sign-on cannot be shared with this local app; enter verified
-  dashboard values manually.
+- Browser same-origin controls prevent the local app from silently reading an
+  authenticated Circuit tab. Only text you explicitly copy or paste is parsed.
 - Local Codex telemetry is not authoritative ChatGPT subscription billing.
+- The Bedrock collector accepts a rolling number of days ending on retrieval;
+  it does not recreate an arbitrary historical AWS range.
