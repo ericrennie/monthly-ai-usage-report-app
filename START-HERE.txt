@@ -31,10 +31,11 @@ Start on Windows
 
 Use the app
 -----------
-The launcher opens the app in your default browser at http://127.0.0.1:8765/.
-If the same app version is already running, the launcher reopens it. If another
-version or program uses port 8765, the app automatically selects a free local
-port instead of exiting.
+Double-click the launcher and use the browser address it opens automatically.
+Do not type a saved localhost address: 127.0.0.1:8765 is only the preferred
+default, and the port may differ when it is already occupied. If the same app
+version is running, the launcher reopens its address. Otherwise, it selects a
+free local port and opens that exact address.
 Choose a daily, weekly, monthly, or custom reporting range and your timezone.
 Select a Bedrock collector script stored anywhere on this device, choose an AWS
 profile or enter temporary AWS credentials, and select the local Codex sessions

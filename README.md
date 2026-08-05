@@ -44,10 +44,11 @@ Python 3.11 or newer is required; no runtime packages need to be installed.
 - Windows: double-click `START-WINDOWS.bat`
 - terminal: `python3 scripts/report_app.py`
 
-The app opens at `http://127.0.0.1:8765/` and is available only on the local
-computer. See `START-HERE.txt` for collection and security details.
-If that port is already occupied, the app reopens the same running version or
-automatically selects another free loopback port.
+The launcher opens the correct local address in the default browser. The
+preferred address is `http://127.0.0.1:8765/`, but the port can differ when that
+address is occupied. Use the address opened by the launcher instead of typing a
+saved localhost URL. The app remains available only on the local computer. See
+`START-HERE.txt` for collection and security details.
 
 ## Build desktop packages
 

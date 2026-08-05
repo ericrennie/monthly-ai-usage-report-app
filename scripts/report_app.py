@@ -52,7 +52,7 @@ DEFAULT_BEDROCK_SCRIPT = Path(
 )
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
-APP_VERSION = "1.2.1"
+APP_VERSION = "1.2.2"
 RELEASE_DATE = "2026-08-05"
 
 

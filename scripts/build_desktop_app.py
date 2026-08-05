@@ -16,7 +16,7 @@ import zipfile
 from pathlib import Path
 
 
-APP_VERSION = "1.2.1"
+APP_VERSION = "1.2.2"
 APP_EXECUTABLE = "Monthly-AI-Usage-Report"
 PACKAGE_FOLDER = "Monthly-AI-Usage-Report-App"
 SOURCE_ROOT = Path(__file__).resolve().parent.parent
@@ -67,9 +67,11 @@ Windows
 3. If Microsoft Defender SmartScreen blocks the unsigned download, use an
    organization-approved signed build rather than bypassing security policy.
 
-The app opens at http://127.0.0.1:8765/ and is reachable only from this device.
-If that port is occupied, the app reopens the same version or selects another
-free local port automatically.
+Double-click the launcher and use the browser address it opens automatically.
+Do not type a saved localhost address: 127.0.0.1:8765 is only the preferred
+default. If it is occupied, the app reopens the same version or selects another
+free local port and opens that exact address. The app is reachable only from
+this device.
 AWS credentials remain in memory for a single collector run and are not saved.
 See README.md for full collection instructions and data boundaries.
 """

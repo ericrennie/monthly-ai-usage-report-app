@@ -616,9 +616,10 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     <button class="btn btn-header" type="button" id="close-about">Close</button>
   </div>
   <div class="about-body">
-    <div class="about-version"><span>Version <span id="about-version">1.2.1</span></span><span>Release date <span id="about-date">2026-08-05</span></span></div>
+    <div class="about-version"><span>Version <span id="about-version">1.2.2</span></span><span>Release date <span id="about-date">2026-08-05</span></span></div>
     <h3>How to use</h3>
     <ol>
+      <li>Start the app with its launcher and use the browser address it opens. This running copy is at <code id="local-app-url">the current browser address</code>. Port 8765 is only the preferred default.</li>
       <li>Choose a preset reporting period or exact start and end dates, then select your timezone.</li>
       <li>Select the local Bedrock collector script and Codex sessions folder. Use an AWS profile when possible.</li>
       <li>Open Circuit, copy the visible dashboard page text, extract the month-to-date totals, and verify them.</li>
@@ -626,6 +627,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     </ol>
     <h3>Release notes</h3>
     <ul>
+      <li>Corrected Help and setup instructions to show the running app's exact address and treat port 8765 only as the preferred default.</li>
       <li>Added exact macOS Gatekeeper first-launch instructions and automatic recovery when the default local port is already in use.</li>
       <li>Added self-contained macOS and Windows desktop builds; users do not install Python.</li>
       <li>Added daily, weekly, month-to-date, previous-month, and custom date ranges.</li>
@@ -643,7 +645,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
 
 <footer>
   Sources: personal Bedrock collector, local Codex session telemetry, and user-verified Circuit dashboard data. Generated locally; methodology: monthly-ai-usage-report skill.<br>
-  Version <span id="footer-version">1.2.1</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
+  Version <span id="footer-version">1.2.2</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
 </footer>
 
 <script>
@@ -763,8 +765,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
         byId('bedrock-script').value = data.bedrock_script || '';
         byId('lambda-url').value = data.bedrock_lambda_url || '';
         byId('sessions-dir').value = data.codex_sessions_dir || '';
-        byId('about-version').textContent = data.version || '1.2.1';
-        byId('footer-version').textContent = data.version || '1.2.1';
+        byId('about-version').textContent = data.version || '1.2.2';
+        byId('footer-version').textContent = data.version || '1.2.2';
         byId('about-date').textContent = data.release_date || '2026-08-05';
         var profile = byId('aws-profile');
         (data.aws_profiles || []).forEach(function (name) {
@@ -1203,6 +1205,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   byId('view-markdown').addEventListener('click', function () { setReportView('markdown'); });
   updateCredentialMode();
   updateCircuitMode();
+  byId('local-app-url').textContent = window.location.origin + '/';
   loadDefaults();
 })();
 </script>
