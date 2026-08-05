@@ -22,6 +22,20 @@ not install Python, need administrator access, or alter system Python.
 The executable is currently unsigned. Follow your organization's software
 approval policy; do not bypass endpoint protections.
 
+### First launch on macOS
+
+If macOS says it cannot verify `START-MAC.command`:
+
+1. Click **Done**.
+2. Open **System Settings > Privacy & Security** and scroll to **Security**.
+3. Click **Open Anyway** beside `START-MAC.command` within about one hour of the
+   blocked launch, authenticate, and confirm **Open**.
+4. Keep the Terminal window open while using the browser app.
+
+Only continue after verifying the release ZIP's SHA-256 checksum. If **Open
+Anyway** is unavailable on a managed Mac, contact IT. Do not disable Gatekeeper
+or remove quarantine attributes.
+
 ## Run from source
 
 Python 3.11 or newer is required; no runtime packages need to be installed.
@@ -32,6 +46,8 @@ Python 3.11 or newer is required; no runtime packages need to be installed.
 
 The app opens at `http://127.0.0.1:8765/` and is available only on the local
 computer. See `START-HERE.txt` for collection and security details.
+If that port is already occupied, the app reopens the same running version or
+automatically selects another free loopback port.
 
 ## Build desktop packages
 

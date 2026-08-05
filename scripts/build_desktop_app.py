@@ -16,7 +16,7 @@ import zipfile
 from pathlib import Path
 
 
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.2.1"
 APP_EXECUTABLE = "Monthly-AI-Usage-Report"
 PACKAGE_FOLDER = "Monthly-AI-Usage-Report-App"
 SOURCE_ROOT = Path(__file__).resolve().parent.parent
@@ -49,9 +49,16 @@ runtime used only by the app; it does not install or change system Python.
 macOS
 -----
 1. Double-click START-MAC.command.
-2. If macOS blocks the unsigned download, right-click START-MAC.command, choose
-   Open, and confirm. Your organization may require an approved signed build.
-3. Keep the terminal window open while using the browser app. Close it to stop.
+2. If macOS says it cannot verify the launcher, click Done. Do not click Move
+   to Trash if you intend to verify and run this download.
+3. Open Apple menu > System Settings > Privacy & Security, scroll to Security,
+   and click Open Anyway beside START-MAC.command. This option is normally
+   available for about one hour after the blocked launch.
+4. Authenticate, confirm Open, and keep the Terminal window open while using
+   the browser app. Close the Terminal window to stop the app.
+5. Only use Open Anyway after verifying the release ZIP's SHA-256 checksum. If
+   it is unavailable on a managed Mac, contact IT; do not disable Gatekeeper or
+   remove quarantine attributes.
 
 Windows
 -------
@@ -61,6 +68,8 @@ Windows
    organization-approved signed build rather than bypassing security policy.
 
 The app opens at http://127.0.0.1:8765/ and is reachable only from this device.
+If that port is occupied, the app reopens the same version or selects another
+free local port automatically.
 AWS credentials remain in memory for a single collector run and are not saved.
 See README.md for full collection instructions and data boundaries.
 """

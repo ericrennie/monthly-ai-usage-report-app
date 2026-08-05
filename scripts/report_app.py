@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import ast
 import configparser
+import errno
 import json
 import os
 import re
@@ -25,6 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones, reset_tzpath
 
 
@@ -50,7 +52,7 @@ DEFAULT_BEDROCK_SCRIPT = Path(
 )
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.2.1"
 RELEASE_DATE = "2026-08-05"
 
 
@@ -70,6 +72,22 @@ def run_python_script_mode() -> None:
         raise SystemExit(f"Python script not found: {script}")
     sys.argv = [str(script), *sys.argv[3:]]
     runpy.run_path(str(script), run_name="__main__")
+
+
+def existing_app_version(port: int) -> str | None:
+    """Return the version of an app already listening on the requested port."""
+    if port <= 0:
+        return None
+    request = Request(f"http://127.0.0.1:{port}/api/defaults", headers={"Accept": "application/json"})
+    try:
+        with urlopen(request, timeout=1) as response:  # noqa: S310 -- fixed loopback URL
+            server = response.headers.get("Server", "")
+            if response.status != HTTPStatus.OK or not server.startswith("MonthlyAIUsageReport/"):
+                return None
+    except OSError:
+        return None
+    product = server.split(None, 1)[0]
+    return product.partition("/")[2] or None
 
 
 def local_timezone_name() -> str:
@@ -923,8 +941,28 @@ def main() -> int:
     try:
         server = ThreadingHTTPServer(("127.0.0.1", args.port), ReportHandler)
     except OSError as exc:
-        print(f"Error: could not start local app: {exc}", file=sys.stderr)
-        return 2
+        if exc.errno != errno.EADDRINUSE or args.port == 0:
+            print(f"Error: could not start local app: {exc}", file=sys.stderr)
+            return 2
+        running_version = existing_app_version(args.port)
+        existing_url = f"http://127.0.0.1:{args.port}/"
+        if running_version == APP_VERSION:
+            print(f"Monthly AI Usage Report {APP_VERSION} is already running: {existing_url}")
+            if not args.no_browser:
+                webbrowser.open(existing_url)
+            return 0
+        try:
+            server = ThreadingHTTPServer(("127.0.0.1", 0), ReportHandler)
+        except OSError as fallback_exc:
+            print(f"Error: could not start local app: {fallback_exc}", file=sys.stderr)
+            return 2
+        if running_version:
+            print(
+                f"Port {args.port} is used by Monthly AI Usage Report {running_version}; "
+                f"starting {APP_VERSION} on an available port."
+            )
+        else:
+            print(f"Port {args.port} is used by another process; starting on an available port.")
 
     url = f"http://127.0.0.1:{server.server_port}/"
     print(f"Monthly AI Usage Report app: {url}")

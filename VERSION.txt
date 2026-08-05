@@ -1,2 +1,2 @@
-Version: 1.2.0
+Version: 1.2.1
 Build date: 2026-08-05
