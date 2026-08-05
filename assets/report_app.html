@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monthly AI Usage Report</title>
+<style>
+:root {
+  --midnight: #0D274D;
+  --midnight2: #071428;
+  --hero-sky: #00BCEB;
+  --medium-blue: #0051AF;
+  --accent-green: #74BF4B;
+  --accent-red: #E3241B;
+  --orange: #FBAB18;
+  --bg: #F4F6F8;
+  --card: #FFFFFF;
+  --text: #1B2A3D;
+  --muted: #6B7F94;
+  --border: #DDE3EA;
+  --input-bg: #FBFCFD;
+  --info-bg: #E8F4FD;
+  --success-bg: #EDF7E4;
+  --warning-bg: #FFF7E6;
+  --error-bg: #FDECEA;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.05);
+  --radius: 12px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+}
+button, input, select, textarea { font: inherit; }
+button, select, input[type="checkbox"], input[type="radio"] { cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid rgba(0,188,235,0.35);
+  outline-offset: 2px;
+}
+
+.app-header {
+  background: linear-gradient(135deg, var(--midnight) 0%, var(--midnight2) 100%);
+  color: var(--card);
+  padding: 1rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+.header-inner {
+  width: min(72rem, 100%);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+.brand { display: flex; align-items: center; gap: 1rem; }
+.brand-mark {
+  background: var(--hero-sky);
+  color: var(--midnight);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.65rem;
+  border-radius: 0.25rem;
+}
+.brand-title { font-size: 1.05rem; font-weight: 600; }
+.header-meta { font-size: 0.72rem; opacity: 0.65; text-align: right; line-height: 1.4; }
+
+main { width: min(72rem, calc(100% - 2rem)); margin: 0 auto; padding: 2rem 0 3rem; }
+.hero {
+  background: linear-gradient(135deg, var(--medium-blue) 0%, var(--hero-sky) 100%);
+  color: var(--card);
+  border-radius: var(--radius);
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow);
+}
+.eyebrow { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.82; }
+.hero h1 { font-size: 2rem; font-weight: 300; line-height: 1.2; margin-top: 0.35rem; }
+.hero h1 strong { font-weight: 700; }
+.hero p { max-width: 48rem; margin-top: 0.65rem; opacity: 0.9; }
+
+.security-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  background: var(--info-bg);
+  border-left: 4px solid var(--medium-blue);
+  border-radius: 0.5rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.5rem;
+}
+.security-note svg { color: var(--medium-blue); flex: 0 0 auto; margin-top: 0.18rem; }
+.security-note strong { color: var(--midnight); }
+.security-note p { color: var(--muted); font-size: 0.84rem; }
+
+.wizard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.card.full { grid-column: 1 / -1; }
+.card-header { display: flex; gap: 0.9rem; align-items: center; padding: 1.15rem 1.25rem; border-bottom: 1px solid var(--border); }
+.step-number {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--midnight);
+  color: var(--card);
+  display: grid;
+  place-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+.card-title { font-size: 0.95rem; font-weight: 700; color: var(--midnight); }
+.card-subtitle { font-size: 0.76rem; color: var(--muted); }
+.card-body { padding: 1.25rem; }
+
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.field { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+label, legend { font-size: 0.75rem; font-weight: 700; color: var(--text); }
+.help { font-size: 0.71rem; color: var(--muted); line-height: 1.45; }
+input[type="text"], input[type="password"], input[type="month"], input[type="number"], select, textarea {
+  width: 100%;
+  min-height: 2.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: var(--input-bg);
+  color: var(--text);
+  padding: 0.62rem 0.75rem;
+}
+textarea { min-height: 5rem; resize: vertical; }
+fieldset { border: 0; }
+.choice-row { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 0.4rem; }
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  background: var(--input-bg);
+}
+.check-row { display: flex; align-items: flex-start; gap: 0.55rem; }
+.check-row input { margin-top: 0.3rem; flex: 0 0 auto; }
+.check-row label { font-weight: 500; color: var(--muted); }
+.sensitive {
+  background: var(--warning-bg);
+  border: 1px solid rgba(251,171,24,0.35);
+  border-radius: 0.5rem;
+  padding: 0.8rem;
+}
+.hidden { display: none !important; }
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1.2rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.action-copy strong { display: block; color: var(--midnight); }
+.action-copy span { font-size: 0.76rem; color: var(--muted); }
+.button-row { display: flex; flex-wrap: wrap; gap: 0.65rem; }
+.btn {
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  padding: 0.68rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn-primary { background: var(--medium-blue); color: var(--card); box-shadow: 0 4px 12px rgba(0,81,175,0.25); }
+.btn-primary:hover { background: var(--midnight); }
+.btn-secondary { background: var(--card); color: var(--medium-blue); border-color: var(--medium-blue); }
+.btn-quiet { background: var(--input-bg); color: var(--text); border-color: var(--border); }
+.btn:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
+
+.run-status { margin-top: 1rem; font-size: 0.8rem; color: var(--muted); min-height: 1.5rem; }
+.run-status.error { color: var(--accent-red); }
+.run-status.success { color: #2E6B00; }
+.results { margin-top: 1.5rem; }
+.source-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.85rem; margin-bottom: 1rem; }
+.source-card { border: 1px solid var(--border); border-left: 4px solid var(--medium-blue); background: var(--card); border-radius: 0.55rem; padding: 0.9rem; }
+.source-card.verified { border-left-color: var(--accent-green); }
+.source-card.inference { border-left-color: var(--orange); }
+.source-card.unavailable { border-left-color: var(--accent-red); }
+.source-name { font-size: 0.8rem; font-weight: 700; color: var(--midnight); }
+.source-status { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-top: 0.1rem; }
+.source-message { font-size: 0.72rem; color: var(--muted); margin-top: 0.4rem; }
+.result-tools { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0.9rem 0; }
+.word-count { font-size: 0.72rem; color: var(--muted); }
+.view-toggle { display: flex; gap: 0.2rem; padding: 0.2rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--input-bg); }
+.view-btn { border: 0; border-radius: 0.35rem; background: transparent; color: var(--muted); padding: 0.45rem 0.75rem; font-size: 0.75rem; font-weight: 700; }
+.view-btn.active { background: var(--card); color: var(--medium-blue); box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+.report-panel { border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.report-formatted { background: var(--card); color: var(--text); padding: 1.75rem; }
+.report-formatted h1 { color: var(--midnight); font-size: 1.7rem; line-height: 1.2; font-weight: 300; margin-bottom: 0.85rem; }
+.report-formatted h2 { color: var(--midnight); font-size: 1.08rem; line-height: 1.35; margin: 1.8rem 0 0.75rem; padding-bottom: 0.45rem; border-bottom: 2px solid var(--hero-sky); }
+.report-formatted h3 { color: var(--midnight); font-size: 0.95rem; margin: 1.25rem 0 0.55rem; }
+.report-formatted p { color: var(--text); font-size: 0.86rem; line-height: 1.65; margin: 0.6rem 0; }
+.report-formatted ul { padding-left: 1.2rem; margin: 0.65rem 0; }
+.report-formatted li { color: var(--text); font-size: 0.84rem; line-height: 1.6; margin: 0.4rem 0; }
+.report-formatted strong { font-weight: 700; color: var(--midnight); }
+.report-table-wrap { width: 100%; overflow-x: auto; margin: 1rem 0 1.4rem; border: 1px solid var(--border); border-radius: 0.55rem; }
+table.report-table { width: 100%; min-width: 60rem; table-layout: fixed; border-collapse: collapse; }
+table.report-table th { background: var(--midnight); color: var(--card); padding: 0.8rem 0.9rem; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+table.report-table th:nth-child(1) { width: 17%; }
+table.report-table th:nth-child(2) { width: 25%; }
+table.report-table th:nth-child(3) { width: 40%; }
+table.report-table th:nth-child(4) { width: 18%; }
+table.report-table td { padding: 0.9rem; vertical-align: top; border-bottom: 1px solid var(--border); font-size: 0.8rem; line-height: 1.55; overflow-wrap: anywhere; }
+table.report-table tbody tr:last-child td { border-bottom: 0; }
+table.report-table tbody tr:nth-child(even) { background: var(--input-bg); }
+table.report-table td:first-child { color: var(--midnight); font-weight: 700; }
+table.report-table td:nth-child(3), table.report-table td:nth-child(4) { font-variant-numeric: tabular-nums; }
+.report-markdown { background: var(--midnight2); color: var(--card); padding: 1.25rem; overflow: auto; max-height: 38rem; }
+.report-markdown pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 0.8rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+footer { text-align: center; color: var(--muted); font-size: 0.7rem; padding: 1.5rem 1rem; border-top: 1px solid var(--border); }
+
+@media (max-width: 820px) {
+  .wizard-grid, .source-grid { grid-template-columns: 1fr; }
+  .card.full { grid-column: auto; }
+  .header-inner, .action-bar { align-items: flex-start; }
+  .action-bar { flex-direction: column; }
+  .result-tools { align-items: flex-start; flex-direction: column; }
+}
+@media (max-width: 560px) {
+  .app-header { padding: 0.8rem 1rem; }
+  .header-meta { display: none; }
+  main { width: min(100% - 1rem, 72rem); padding-top: 0.75rem; }
+  .hero { padding: 1.25rem; }
+  .hero h1 { font-size: 1.55rem; }
+  .field-grid { grid-template-columns: 1fr; }
+  .field.full { grid-column: auto; }
+  .button-row, .btn { width: 100%; }
+}
+@media print {
+  body { background: var(--card); }
+  .app-header, .hero, .security-note, .wizard-grid, .action-bar, .result-tools, footer { display: none; }
+  main, .results { width: 100%; margin: 0; padding: 0; }
+  .report-formatted { padding: 0; border: 0; box-shadow: none; }
+  .report-markdown { display: none !important; }
+  .report-table-wrap { overflow: visible; }
+  table.report-table { min-width: 0; }
+}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-mark">Local</span>
+      <span class="brand-title">Monthly AI Usage Report</span>
+    </div>
+    <div class="header-meta">Local setup wizard<br>Runs on this computer</div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <p class="eyebrow">Guided collection</p>
+    <h1>Configure sources. <strong>Generate one report.</strong></h1>
+    <p>Collect the previous calendar month from Claude Code on Amazon Web Services (AWS) Bedrock, local Codex telemetry, and Circuit without editing scripts.</p>
+  </section>
+
+  <div class="security-note" role="note">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+      <rect x="3" y="11" width="18" height="10" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+    </svg>
+    <div>
+      <strong>Local and ephemeral by design</strong>
+      <p>The app binds to 127.0.0.1. Temporary AWS credentials stay in process memory for one collector run and are never saved, logged, or placed in browser storage. Prefer an AWS profile or single sign-on whenever available.</p>
+    </div>
+  </div>
+
+  <div class="wizard-grid">
+    <section class="card full" aria-labelledby="period-title">
+      <div class="card-header">
+        <span class="step-number">1</span>
+        <div><h2 class="card-title" id="period-title">Reporting period</h2><p class="card-subtitle">Use an exact calendar month for Codex telemetry.</p></div>
+      </div>
+      <div class="card-body field-grid">
+        <div class="field">
+          <label for="report-month">Reporting month</label>
+          <input id="report-month" type="month" required>
+        </div>
+        <div class="field">
+          <label for="timezone">IANA timezone</label>
+          <input id="timezone" type="text" placeholder="America/Chicago" required>
+          <span class="help">Internet Assigned Numbers Authority (IANA) timezone used for month boundaries.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="bedrock-title">
+      <div class="card-header">
+        <span class="step-number">2</span>
+        <div><h2 class="card-title" id="bedrock-title">Claude Code on AWS Bedrock</h2><p class="card-subtitle">Rolling 30-day personal collector.</p></div>
+      </div>
+      <div class="card-body field-grid">
+        <div class="field full">
+          <div class="check-row">
+            <input id="bedrock-enabled" type="checkbox" checked>
+            <label for="bedrock-enabled">Run the Bedrock collector.</label>
+          </div>
+        </div>
+        <div class="field full">
+          <label for="bedrock-script">Collector path</label>
+          <input id="bedrock-script" type="text">
+        </div>
+        <fieldset class="field full">
+          <legend>Credential method</legend>
+          <div class="choice-row">
+            <label class="choice"><input type="radio" name="credential-mode" value="profile" checked> AWS profile</label>
+            <label class="choice"><input type="radio" name="credential-mode" value="temporary"> Temporary credentials</label>
+          </div>
+        </fieldset>
+        <div id="profile-fields" class="field full">
+          <label for="aws-profile">AWS profile</label>
+          <select id="aws-profile"><option value="">Automatic credential resolution</option></select>
+          <span class="help">Refresh AWS single sign-on before running when credentials have expired.</span>
+        </div>
+        <div id="temporary-fields" class="field full sensitive hidden">
+          <div class="field-grid">
+            <div class="field full">
+              <label for="access-key">Temporary access-key ID</label>
+              <input id="access-key" type="text" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="field full">
+              <label for="secret-key">Temporary secret access key</label>
+              <input id="secret-key" type="password" autocomplete="new-password">
+            </div>
+            <div class="field full">
+              <label for="session-token">Temporary session token</label>
+              <textarea id="session-token" autocomplete="off" spellcheck="false"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="field full">
+          <label for="lambda-url">Verified Lambda Function URL</label>
+          <input id="lambda-url" type="text" spellcheck="false">
+          <span class="help">Confirm ownership with the collector owner. Only AWS Lambda Function URLs are accepted.</span>
+        </div>
+        <div class="field full sensitive">
+          <div class="check-row">
+            <input id="approve-egress" type="checkbox">
+            <label for="approve-egress">I approve the collector sending a SigV4-signed request, including an access-key identifier and any temporary session-token header, to the displayed Lambda Function URL.</label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="codex-title">
+      <div class="card-header">
+        <span class="step-number">3</span>
+        <div><h2 class="card-title" id="codex-title">Codex and ChatGPT</h2><p class="card-subtitle">Exact local calendar-month telemetry.</p></div>
+      </div>
+      <div class="card-body field-grid">
+        <div class="field full">
+          <label for="sessions-dir">Codex sessions directory</label>
+          <input id="sessions-dir" type="text">
+          <span class="help">The collector scans JavaScript Object Notation Lines (JSONL) rollouts and keeps reasoning tokens inside output totals.</span>
+        </div>
+        <div class="field full security-note" style="margin:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <div><strong>No Codex credentials required</strong><p>The local collector reads only the selected sessions directory. It cannot provide authoritative ChatGPT subscription billing.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card full" aria-labelledby="circuit-title">
+      <div class="card-header">
+        <span class="step-number">4</span>
+        <div><h2 class="card-title" id="circuit-title">Circuit</h2><p class="card-subtitle">Enter figures from the completed Monthly view or a permitted inference.</p></div>
+      </div>
+      <div class="card-body field-grid">
+        <fieldset class="field full">
+          <legend>Circuit source</legend>
+          <div class="choice-row">
+            <label class="choice"><input type="radio" name="circuit-mode" value="direct"> Completed Monthly view</label>
+            <label class="choice"><input type="radio" name="circuit-mode" value="derived"> Infer QTD minus current MTD</label>
+            <label class="choice"><input type="radio" name="circuit-mode" value="unavailable" checked> Not available</label>
+          </div>
+        </fieldset>
+        <div class="field full">
+          <label for="dashboard-url">Circuit Usage Dashboard URL</label>
+          <div class="button-row">
+            <input id="dashboard-url" type="text" placeholder="https://..." style="flex:1;min-width:16rem;">
+            <button class="btn btn-secondary" type="button" id="open-circuit">Open dashboard</button>
+          </div>
+          <span class="help">The local app cannot reuse browser single sign-on across origins. Open the dashboard, sign in, then transcribe the visible totals.</span>
+        </div>
+
+        <div id="circuit-direct" class="field full hidden">
+          <div class="field-grid">
+            <div class="field">
+              <label for="circuit-tokens">Monthly tokens</label>
+              <input id="circuit-tokens" type="text" inputmode="numeric">
+            </div>
+            <div class="field">
+              <label for="circuit-cost">Approximate cost</label>
+              <input id="circuit-cost" type="text" inputmode="decimal" placeholder="0.00">
+            </div>
+          </div>
+        </div>
+
+        <div id="circuit-derived" class="field full hidden">
+          <div class="field-grid">
+            <div class="field">
+              <label for="qtd-tokens">Quarter-to-date tokens</label>
+              <input id="qtd-tokens" type="text" inputmode="numeric">
+            </div>
+            <div class="field">
+              <label for="mtd-tokens">Current month-to-date tokens</label>
+              <input id="mtd-tokens" type="text" inputmode="numeric">
+            </div>
+            <div class="field">
+              <label for="qtd-cost">Quarter-to-date approximate cost</label>
+              <input id="qtd-cost" type="text" inputmode="decimal">
+            </div>
+            <div class="field">
+              <label for="mtd-cost">Current month-to-date approximate cost</label>
+              <input id="mtd-cost" type="text" inputmode="decimal">
+            </div>
+          </div>
+          <span class="help">Allowed only during the second month of a calendar quarter. The report labels the result as Inference and shows the arithmetic.</span>
+        </div>
+
+        <div id="circuit-common" class="field full hidden">
+          <div class="field-grid">
+            <div class="field full sensitive">
+              <div class="check-row">
+                <input id="circuit-confirmed" type="checkbox">
+                <label for="circuit-confirmed">I confirm these values came from the visible Circuit Usage Dashboard for the stated Monthly view, or from the stated quarter-to-date and month-to-date views.</label>
+              </div>
+            </div>
+            <div class="field full">
+              <label for="comparison">Comparison indicator</label>
+              <input id="comparison" type="text" placeholder="Example: 12% above previous month">
+            </div>
+            <div class="field full">
+              <label for="cross-charge">Dashboard cross-charge statement</label>
+              <textarea id="cross-charge" placeholder="Enter the dashboard wording exactly."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="action-bar">
+    <div class="action-copy"><strong>Generate the management report</strong><span>Missing sources remain visible and never receive invented values.</span></div>
+    <div class="button-row"><button class="btn btn-primary" type="button" id="run-report">Run collectors and generate</button></div>
+  </div>
+  <div id="run-status" class="run-status" role="status" aria-live="polite"></div>
+
+  <section id="results" class="results hidden" aria-labelledby="results-title">
+    <div class="card-header" style="padding-left:0;border:0;">
+      <span class="step-number">5</span>
+      <div><h2 class="card-title" id="results-title">Report output</h2><p class="card-subtitle">Review caveats before sharing.</p></div>
+    </div>
+    <div id="source-grid" class="source-grid"></div>
+    <div class="result-tools">
+      <div>
+        <span id="word-count" class="word-count"></span>
+        <div class="view-toggle" role="tablist" aria-label="Report view" style="margin-top:0.45rem;">
+          <button class="view-btn active" type="button" role="tab" aria-selected="true" id="view-formatted">Formatted report</button>
+          <button class="view-btn" type="button" role="tab" aria-selected="false" id="view-markdown">Markdown</button>
+        </div>
+      </div>
+      <div class="button-row">
+        <button class="btn btn-quiet" type="button" id="copy-report">Copy Markdown</button>
+        <button class="btn btn-secondary" type="button" id="download-report">Download report</button>
+      </div>
+    </div>
+    <div id="formatted-output" class="report-panel report-formatted" role="tabpanel" aria-labelledby="view-formatted"></div>
+    <div id="markdown-output" class="report-panel report-markdown hidden" role="tabpanel" aria-labelledby="view-markdown"><pre id="report-output"></pre></div>
+  </section>
+</main>
+
+<footer>
+  Sources: personal Bedrock collector, local Codex session telemetry, and user-verified Circuit dashboard data. Generated locally; methodology: monthly-ai-usage-report skill.
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var latestReport = '';
+  var latestMonth = '';
+
+  function byId(id) { return document.getElementById(id); }
+  function selected(name) {
+    var element = document.querySelector('input[name="' + name + '"]:checked');
+    return element ? element.value : '';
+  }
+
+  function updateCredentialMode() {
+    var temporary = selected('credential-mode') === 'temporary';
+    byId('temporary-fields').classList.toggle('hidden', !temporary);
+    byId('profile-fields').classList.toggle('hidden', temporary);
+  }
+
+  function updateCircuitMode() {
+    var mode = selected('circuit-mode');
+    byId('circuit-direct').classList.toggle('hidden', mode !== 'direct');
+    byId('circuit-derived').classList.toggle('hidden', mode !== 'derived');
+    byId('circuit-common').classList.toggle('hidden', mode === 'unavailable');
+  }
+
+  function status(message, type) {
+    var node = byId('run-status');
+    node.textContent = message;
+    node.className = 'run-status' + (type ? ' ' + type : '');
+  }
+
+  function loadDefaults() {
+    fetch('/api/defaults', { cache: 'no-store' })
+      .then(function (response) {
+        if (!response.ok) throw new Error('Could not load local defaults.');
+        return response.json();
+      })
+      .then(function (data) {
+        byId('report-month').value = data.month || '';
+        byId('timezone').value = data.timezone || 'UTC';
+        byId('bedrock-script').value = data.bedrock_script || '';
+        byId('lambda-url').value = data.bedrock_lambda_url || '';
+        byId('sessions-dir').value = data.codex_sessions_dir || '';
+        var profile = byId('aws-profile');
+        (data.aws_profiles || []).forEach(function (name) {
+          var option = document.createElement('option');
+          option.value = name;
+          option.textContent = name;
+          profile.appendChild(option);
+        });
+      })
+      .catch(function (error) { status(error.message, 'error'); });
+  }
+
+  function payload() {
+    var credentialMode = selected('credential-mode');
+    var circuitMode = selected('circuit-mode');
+    return {
+      month: byId('report-month').value,
+      timezone: byId('timezone').value.trim(),
+      bedrock: {
+        enabled: byId('bedrock-enabled').checked,
+        script: byId('bedrock-script').value.trim(),
+        profile: credentialMode === 'profile' ? byId('aws-profile').value : '',
+        access_key_id: credentialMode === 'temporary' ? byId('access-key').value.trim() : '',
+        secret_access_key: credentialMode === 'temporary' ? byId('secret-key').value : '',
+        session_token: credentialMode === 'temporary' ? byId('session-token').value.trim() : '',
+        lambda_url: byId('lambda-url').value.trim(),
+        approved_egress: byId('approve-egress').checked
+      },
+      codex: { sessions_dir: byId('sessions-dir').value.trim() },
+      circuit: {
+        mode: circuitMode,
+        dashboard_url: byId('dashboard-url').value.trim(),
+        tokens: byId('circuit-tokens').value.trim(),
+        cost: byId('circuit-cost').value.trim(),
+        qtd_tokens: byId('qtd-tokens').value.trim(),
+        mtd_tokens: byId('mtd-tokens').value.trim(),
+        qtd_cost: byId('qtd-cost').value.trim(),
+        mtd_cost: byId('mtd-cost').value.trim(),
+        comparison: byId('comparison').value.trim(),
+        cross_charge: byId('cross-charge').value.trim(),
+        confirmed: byId('circuit-confirmed').checked
+      }
+    };
+  }
+
+  function sourceCard(name, source) {
+    var card = document.createElement('div');
+    var sourceStatus = source.status || 'unavailable';
+    card.className = 'source-card ' + sourceStatus;
+    var heading = document.createElement('div');
+    heading.className = 'source-name';
+    heading.textContent = name;
+    var state = document.createElement('div');
+    state.className = 'source-status';
+    state.textContent = sourceStatus;
+    var detail = document.createElement('div');
+    detail.className = 'source-message';
+    if (source.failure) {
+      detail.textContent = source.failure.category + ': ' + source.failure.message;
+    } else {
+      detail.textContent = source.window === 'rolling 30 days' ? 'Rolling 30-day source collected.' : 'Source collected.';
+    }
+    card.appendChild(heading);
+    card.appendChild(state);
+    card.appendChild(detail);
+    return card;
+  }
+
+  function appendInline(parent, value) {
+    var text = String(value || '');
+    var position = 0;
+    while (position < text.length) {
+      var start = text.indexOf('**', position);
+      if (start === -1) {
+        parent.appendChild(document.createTextNode(text.slice(position)));
+        return;
+      }
+      var end = text.indexOf('**', start + 2);
+      if (end === -1) {
+        parent.appendChild(document.createTextNode(text.slice(position)));
+        return;
+      }
+      parent.appendChild(document.createTextNode(text.slice(position, start)));
+      var strong = document.createElement('strong');
+      strong.textContent = text.slice(start + 2, end);
+      parent.appendChild(strong);
+      position = end + 2;
+    }
+  }
+
+  function splitTableRow(line) {
+    var value = String(line || '').trim();
+    if (value.charAt(0) === '|') value = value.slice(1);
+    if (value.charAt(value.length - 1) === '|') value = value.slice(0, -1);
+    var cells = [];
+    var current = '';
+    for (var index = 0; index < value.length; index += 1) {
+      var character = value.charAt(index);
+      if (character === '\\' && value.charAt(index + 1) === '|') {
+        current += '|';
+        index += 1;
+      } else if (character === '|') {
+        cells.push(current.trim());
+        current = '';
+      } else {
+        current += character;
+      }
+    }
+    cells.push(current.trim());
+    return cells;
+  }
+
+  function isTableSeparator(line) {
+    var cells = splitTableRow(line);
+    return cells.length > 0 && cells.every(function (cell) {
+      return /^:?-{3,}:?$/.test(cell);
+    });
+  }
+
+  function startsBlock(lines, index) {
+    var line = lines[index] || '';
+    var next = lines[index + 1] || '';
+    return /^#{1,3}\s+/.test(line) || /^-\s+/.test(line) ||
+      (line.indexOf('|') !== -1 && isTableSeparator(next));
+  }
+
+  function renderMarkdown(markdown, target) {
+    var lines = String(markdown || '').replace(/\r\n?/g, '\n').split('\n');
+    var fragment = document.createDocumentFragment();
+    var index = 0;
+    target.replaceChildren();
+
+    while (index < lines.length) {
+      var line = lines[index];
+      if (!line.trim()) {
+        index += 1;
+        continue;
+      }
+
+      var headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
+      if (headingMatch) {
+        var heading = document.createElement('h' + headingMatch[1].length);
+        appendInline(heading, headingMatch[2]);
+        fragment.appendChild(heading);
+        index += 1;
+        continue;
+      }
+
+      if (line.indexOf('|') !== -1 && isTableSeparator(lines[index + 1] || '')) {
+        var headers = splitTableRow(line);
+        var wrapper = document.createElement('div');
+        wrapper.className = 'report-table-wrap';
+        var table = document.createElement('table');
+        table.className = 'report-table';
+        var thead = document.createElement('thead');
+        var headerRow = document.createElement('tr');
+        headers.forEach(function (cell) {
+          var th = document.createElement('th');
+          th.setAttribute('scope', 'col');
+          appendInline(th, cell);
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+        var tbody = document.createElement('tbody');
+        index += 2;
+        while (index < lines.length && lines[index].trim() && lines[index].indexOf('|') !== -1) {
+          var row = document.createElement('tr');
+          var cells = splitTableRow(lines[index]);
+          headers.forEach(function (_header, cellIndex) {
+            var td = document.createElement('td');
+            appendInline(td, cells[cellIndex] || '');
+            row.appendChild(td);
+          });
+          tbody.appendChild(row);
+          index += 1;
+        }
+        table.appendChild(tbody);
+        wrapper.appendChild(table);
+        fragment.appendChild(wrapper);
+        continue;
+      }
+
+      if (/^-\s+/.test(line)) {
+        var list = document.createElement('ul');
+        while (index < lines.length && /^-\s+/.test(lines[index])) {
+          var item = document.createElement('li');
+          appendInline(item, lines[index].replace(/^-\s+/, ''));
+          list.appendChild(item);
+          index += 1;
+        }
+        fragment.appendChild(list);
+        continue;
+      }
+
+      var paragraphLines = [];
+      while (index < lines.length && lines[index].trim() && !startsBlock(lines, index)) {
+        paragraphLines.push(lines[index].trim());
+        index += 1;
+      }
+      if (paragraphLines.length) {
+        var paragraph = document.createElement('p');
+        appendInline(paragraph, paragraphLines.join(' '));
+        fragment.appendChild(paragraph);
+      } else {
+        index += 1;
+      }
+    }
+    target.appendChild(fragment);
+  }
+
+  function setReportView(view) {
+    var formatted = view !== 'markdown';
+    byId('formatted-output').classList.toggle('hidden', !formatted);
+    byId('markdown-output').classList.toggle('hidden', formatted);
+    byId('view-formatted').classList.toggle('active', formatted);
+    byId('view-formatted').setAttribute('aria-selected', String(formatted));
+    byId('view-markdown').classList.toggle('active', !formatted);
+    byId('view-markdown').setAttribute('aria-selected', String(!formatted));
+  }
+
+  function renderResult(result) {
+    latestReport = result.report || '';
+    latestMonth = result.reporting_month || 'report';
+    byId('report-output').textContent = latestReport;
+    renderMarkdown(latestReport, byId('formatted-output'));
+    setReportView('formatted');
+    byId('word-count').textContent = (result.word_count || 0) + ' words; target under 500.';
+    var grid = byId('source-grid');
+    grid.replaceChildren(
+      sourceCard('Claude Code / Bedrock', result.sources.bedrock),
+      sourceCard('Codex / ChatGPT', result.sources.codex),
+      sourceCard('Circuit', result.sources.circuit)
+    );
+    byId('results').classList.remove('hidden');
+    byId('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function runReport() {
+    var button = byId('run-report');
+    button.disabled = true;
+    status('Running local collectors. Bedrock may take up to two minutes.', '');
+    fetch('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload())
+    })
+      .then(function (response) {
+        return response.json().then(function (body) {
+          if (!response.ok) throw new Error(body.error || 'Report generation failed.');
+          return body;
+        });
+      })
+      .then(function (result) {
+        renderResult(result);
+        status('Report generated. Review source status and caveats before sharing.', 'success');
+      })
+      .catch(function (error) { status(error.message, 'error'); })
+      .finally(function () {
+        byId('access-key').value = '';
+        byId('secret-key').value = '';
+        byId('session-token').value = '';
+        button.disabled = false;
+      });
+  }
+
+  function copyReport() {
+    if (!latestReport) return;
+    navigator.clipboard.writeText(latestReport)
+      .then(function () { status('Report copied to the clipboard.', 'success'); })
+      .catch(function () { status('Clipboard access failed. Select the report text manually.', 'error'); });
+  }
+
+  function downloadReport() {
+    if (!latestReport) return;
+    var blob = new Blob([latestReport], { type: 'text/markdown;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = 'ai-usage-report-' + latestMonth + '.md';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function openCircuit() {
+    var value = byId('dashboard-url').value.trim();
+    try {
+      var target = new URL(value);
+      if (target.protocol !== 'https:') throw new Error();
+      window.open(target.href, '_blank', 'noopener,noreferrer');
+    } catch (_error) {
+      status('Enter a valid HTTPS Circuit dashboard URL.', 'error');
+    }
+  }
+
+  document.querySelectorAll('input[name="credential-mode"]').forEach(function (node) {
+    node.addEventListener('change', updateCredentialMode);
+  });
+  document.querySelectorAll('input[name="circuit-mode"]').forEach(function (node) {
+    node.addEventListener('change', updateCircuitMode);
+  });
+  byId('run-report').addEventListener('click', runReport);
+  byId('copy-report').addEventListener('click', copyReport);
+  byId('download-report').addEventListener('click', downloadReport);
+  byId('open-circuit').addEventListener('click', openCircuit);
+  byId('view-formatted').addEventListener('click', function () { setReportView('formatted'); });
+  byId('view-markdown').addEventListener('click', function () { setReportView('markdown'); });
+  updateCredentialMode();
+  updateCircuitMode();
+  loadDefaults();
+})();
+</script>
+</body>
+</html>

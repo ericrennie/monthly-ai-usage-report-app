@@ -1,0 +1,31 @@
+MONTHLY AI USAGE REPORT APP
+
+Requirements
+------------
+Python 3.11 or newer. No Python packages need to be installed.
+
+Start on macOS
+--------------
+1. Double-click START-MAC.command.
+2. If macOS blocks it, right-click the file, choose Open, then confirm Open.
+
+Start on Windows
+----------------
+1. Double-click START-WINDOWS.bat.
+2. If Python is missing, install Python 3.11+ and select "Add Python to PATH".
+
+Use the app
+-----------
+The launcher opens the app in your default browser at http://127.0.0.1:8765/.
+Choose an AWS profile or enter temporary AWS credentials, select the Codex
+sessions folder, and transcribe Circuit Monthly-view totals. Generate the
+report, then use the formatted view for review or the Markdown view for copying.
+
+Security and limitations
+------------------------
+- The server is available only on this computer and stops when its terminal closes.
+- AWS credentials stay in memory for one collector run and are never saved.
+- Confirm the displayed AWS Lambda URL before approving collector egress.
+- Circuit single sign-on cannot be shared with this local app; enter verified
+  dashboard values manually.
+- Local Codex telemetry is not authoritative ChatGPT subscription billing.
