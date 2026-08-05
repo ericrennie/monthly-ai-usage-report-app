@@ -30,6 +30,17 @@ Security and limitations
 - The server is available only on this computer and stops when its terminal closes.
 - AWS credentials stay in memory for one collector run and are never saved.
 - Confirm the displayed AWS Lambda URL before approving collector egress.
+- The Function URL must belong to the deployed usage-collector Lambda. It is not
+  a Bedrock model endpoint, function Amazon Resource Name (ARN), access key, or
+  AWS sign-in URL.
+- Find it in AWS Console > Lambda > Functions > select the collector function >
+  Function overview or Configuration > Function URL. Verify Auth type AWS
+  Identity and Access Management (AWS_IAM).
+- Command-line lookup: aws lambda get-function-url-config --function-name
+  <collector-function-name> --query FunctionUrl --output text
+- Example: https://abcde12345.lambda-url.us-east-1.on.aws/
+- If no collector Lambda exists, ask the collector owner to deploy it and grant
+  access; creating a Function URL by itself does not create the collector.
 - Browser same-origin controls prevent the local app from silently reading an
   authenticated Circuit tab. Only text you explicitly copy or paste is parsed.
 - Local Codex telemetry is not authoritative ChatGPT subscription billing.

@@ -175,6 +175,13 @@ fieldset { border: 0; }
 .inline-status { min-height: 1.2rem; color: var(--muted); font-size: 0.72rem; }
 .inline-status.success { color: #2E6B00; }
 .inline-status.error { color: var(--accent-red); }
+.help-details { margin-top: 0.2rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--input-bg); }
+.help-details summary { cursor: pointer; padding: 0.7rem 0.8rem; color: var(--medium-blue); font-size: 0.76rem; font-weight: 700; }
+.help-details-body { padding: 0 0.9rem 0.9rem; color: var(--muted); font-size: 0.74rem; line-height: 1.55; }
+.help-details-body p { margin: 0.45rem 0; }
+.help-details-body ol { padding-left: 1.2rem; margin: 0.45rem 0; }
+.help-details-body code { overflow-wrap: anywhere; color: var(--midnight); }
+.help-details-body a { color: var(--medium-blue); }
 .hidden { display: none !important; }
 
 .action-bar {
@@ -417,9 +424,26 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
           </div>
         </div>
         <div class="field full">
-          <label for="lambda-url">Verified Lambda Function URL</label>
-          <input id="lambda-url" type="text" spellcheck="false">
-          <span class="help">Confirm ownership with the collector owner. Only AWS Lambda Function URLs are accepted.</span>
+          <label for="lambda-url">Usage collector Lambda Function URL</label>
+          <input id="lambda-url" type="text" spellcheck="false" placeholder="https://abcde12345.lambda-url.us-east-1.on.aws/">
+          <span class="help">The secure HTTPS address of the deployed usage-collector backend. It is not a Bedrock model endpoint, AWS sign-in page, function Amazon Resource Name (ARN), or access key.</span>
+          <details class="help-details">
+            <summary>What is this URL, and where do I find it?</summary>
+            <div class="help-details-body">
+              <p><strong>What it does:</strong> The local Python collector sends a signed request to an AWS Lambda function that queries the approved usage data and returns the report figures.</p>
+              <p><strong>First ask the collector owner:</strong> If your team supplied the collector script, the URL may populate automatically. Otherwise ask the administrator who deployed the Bedrock usage collector for its approved Function URL.</p>
+              <p><strong>Find it in the AWS console:</strong></p>
+              <ol>
+                <li>Open AWS Console &gt; Lambda &gt; Functions.</li>
+                <li>Select the function that actually runs your Bedrock usage collector.</li>
+                <li>Open Function overview, or Configuration &gt; Function URL.</li>
+                <li>Copy the Function URL and verify that its authentication type is AWS Identity and Access Management (<code>AWS_IAM</code>).</li>
+              </ol>
+              <p><strong>Command line:</strong> <code>aws lambda get-function-url-config --function-name &lt;collector-function-name&gt; --query FunctionUrl --output text</code></p>
+              <p><strong>Example:</strong> <code>https://abcde12345.lambda-url.us-east-1.on.aws/</code></p>
+              <p>If the collector Lambda does not exist, creating a Function URL by itself is not enough—the collector owner must deploy the usage-collector function and grant your AWS identity permission. Do not enter an unverified or public (<code>NONE</code> authentication) endpoint. See the <a href="https://docs.aws.amazon.com/lambda/latest/dg/urls-configuration.html" target="_blank" rel="noopener noreferrer">AWS Function URL instructions</a>.</p>
+            </div>
+          </details>
         </div>
         <div class="field full sensitive">
           <div class="check-row">
@@ -592,7 +616,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     <button class="btn btn-header" type="button" id="close-about">Close</button>
   </div>
   <div class="about-body">
-    <div class="about-version"><span>Version <span id="about-version">1.1.0</span></span><span>Release date <span id="about-date">2026-08-05</span></span></div>
+    <div class="about-version"><span>Version <span id="about-version">1.1.1</span></span><span>Release date <span id="about-date">2026-08-05</span></span></div>
     <h3>How to use</h3>
     <ol>
       <li>Choose a preset reporting period or exact start and end dates, then select your timezone.</li>
@@ -606,17 +630,18 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
       <li>Added timezone selection with a manual-entry option and portable local path pickers.</li>
       <li>Added Circuit month-to-date extraction from copied dashboard text.</li>
       <li>Added formatted Word-compatible and Print / Save PDF exports.</li>
+      <li>Added plain-language Lambda Function URL discovery and security guidance.</li>
     </ul>
     <h3>Author</h3>
     <p>Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a></p>
     <h3>Important boundaries</h3>
-    <p>Bedrock collection is a rolling number of days ending on the retrieval date and may not match a historical custom range. Local Codex telemetry is not authoritative ChatGPT billing. Circuit values must be reviewed by the user because browser same-origin controls prevent automatic reading of an authenticated dashboard in another tab.</p>
+    <p>Bedrock collection is a rolling number of days ending on the retrieval date and may not match a historical custom range. Its Function URL must point to the approved usage-collector Lambda, not a Bedrock endpoint or arbitrary Lambda. Local Codex telemetry is not authoritative ChatGPT billing. Circuit values must be reviewed by the user because browser same-origin controls prevent automatic reading of an authenticated dashboard in another tab.</p>
   </div>
 </dialog>
 
 <footer>
   Sources: personal Bedrock collector, local Codex session telemetry, and user-verified Circuit dashboard data. Generated locally; methodology: monthly-ai-usage-report skill.<br>
-  Version <span id="footer-version">1.1.0</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
+  Version <span id="footer-version">1.1.1</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
 </footer>
 
 <script>
@@ -736,8 +761,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
         byId('bedrock-script').value = data.bedrock_script || '';
         byId('lambda-url').value = data.bedrock_lambda_url || '';
         byId('sessions-dir').value = data.codex_sessions_dir || '';
-        byId('about-version').textContent = data.version || '1.1.0';
-        byId('footer-version').textContent = data.version || '1.1.0';
+        byId('about-version').textContent = data.version || '1.1.1';
+        byId('footer-version').textContent = data.version || '1.1.1';
         byId('about-date').textContent = data.release_date || '2026-08-05';
         var profile = byId('aws-profile');
         (data.aws_profiles || []).forEach(function (name) {

@@ -25,6 +25,20 @@ Enter a verified HTTPS AWS Lambda Function URL in the app and explicitly approve
 egress before collection. The included collector signs the request with temporary
 AWS credentials or a selected AWS profile.
 
+This URL is the HTTPS endpoint of the deployed usage-collector Lambda—not a
+Bedrock endpoint, function Amazon Resource Name (ARN), access key, or AWS sign-in
+URL. If your team provided the collector, ask its owner for the approved URL. Administrators can
+find it in AWS Console > Lambda > Functions > select the collector function >
+Function overview or Configuration > Function URL, or run:
+
+`aws lambda get-function-url-config --function-name <collector-function-name> --query FunctionUrl --output text`
+
+It looks like `https://abcde12345.lambda-url.us-east-1.on.aws/`. Verify that
+the authentication type is AWS Identity and Access Management (`AWS_IAM`). If
+the collector Lambda has not been deployed, creating a Function URL alone is
+insufficient; the collector owner must deploy the correct function and grant
+your AWS identity access.
+
 ## Data boundaries
 
 - Credentials stay in process memory for one collector run and are not saved.
