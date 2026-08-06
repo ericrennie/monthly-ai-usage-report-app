@@ -57,6 +57,8 @@ Security and limitations
   stops it automatically; a heartbeat watchdog also cleans up after a browser
   crash. Closing the source launcher's terminal remains a fallback.
 - AWS credentials stay in memory for one collector run and are never saved.
+- Finder-launched native macOS builds can import only the approved AWS and
+  certificate variables initialized by the user's login shell for that run.
 - Desktop builds verify HTTPS through macOS Keychain or Windows CryptoAPI so
   organization-managed root certificates are honored. Administrators may set
   SSL_CERT_FILE or AWS_CA_BUNDLE to an approved PEM bundle when required; never

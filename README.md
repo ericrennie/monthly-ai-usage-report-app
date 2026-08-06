@@ -106,6 +106,8 @@ your AWS identity access.
 ## Data boundaries
 
 - Credentials stay in process memory for one collector run and are not saved.
+- Finder-launched native macOS builds can securely import only the approved AWS
+  and certificate variables initialized by the user's login shell for that run.
 - Desktop builds use the native macOS or Windows certificate store for HTTPS.
   An administrator-provided PEM bundle may be selected with `SSL_CERT_FILE` or
   `AWS_CA_BUNDLE`; TLS verification is never disabled.
