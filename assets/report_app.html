@@ -315,6 +315,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     </div>
     <div class="header-actions">
       <div class="header-meta">Local setup wizard<br>Runs on this computer</div>
+      <button class="btn btn-header" type="button" id="quit-app">Quit app</button>
       <button class="btn btn-header" type="button" id="open-about">About</button>
     </div>
   </div>
@@ -619,17 +620,19 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     <button class="btn btn-header" type="button" id="close-about">Close</button>
   </div>
   <div class="about-body">
-    <div class="about-version"><span>Version <span id="about-version">1.3.4</span></span><span>Release date <span id="about-date">2026-08-06</span></span></div>
+    <div class="about-version"><span>Version <span id="about-version">1.3.5</span></span><span>Release date <span id="about-date">2026-08-06</span></span></div>
     <h3>How to use</h3>
     <ol>
-      <li>Start the app with its launcher and use the browser address it opens. This running copy is at <code id="local-app-url">the current browser address</code>. Port 8765 is only the preferred default.</li>
+      <li>Start the app and use the browser address it opens. This running copy is at <code id="local-app-url">the current browser address</code>. Port 8765 is only the preferred default.</li>
       <li>Choose a preset reporting period or exact start and end dates, then select your timezone.</li>
       <li>Confirm the automatically detected Bedrock collector and Codex sessions folder. Choose another path only when needed, and use an AWS profile when possible.</li>
       <li>Open Circuit, copy the visible dashboard page text, extract the month-to-date totals, and verify them.</li>
       <li>Generate the report, review every source caveat, then export Markdown, Word-compatible format, or PDF.</li>
+      <li>Close the final report tab to stop the local app automatically, or choose <strong>Quit app</strong> for an immediate shutdown.</li>
     </ol>
     <h3>Release notes</h3>
     <ul>
+      <li>Added Chrome and Firefox-compatible browser lifecycle tracking so closing the final report tab stops the local app, with a crash-safe heartbeat fallback and an explicit Quit app control.</li>
       <li>Replaced the two-stage macOS shell launcher and executable with one Finder-launchable app and a drag-to-Applications disk image.</li>
       <li>Added optional Developer ID signing and Apple notarization support for a normal one-click macOS launch.</li>
       <li>Fixed AWS certificate validation in desktop builds by using the native macOS Keychain or Windows certificate store, with support for administrator-provided CA bundles.</li>
@@ -656,7 +659,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
 
 <footer>
   Sources: personal Bedrock collector, local Codex session telemetry, and user-verified Circuit dashboard data. Generated locally; methodology: monthly-ai-usage-report skill.<br>
-  Version <span id="footer-version">1.3.4</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
+  Version <span id="footer-version">1.3.5</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
 </footer>
 
 <script>
@@ -667,11 +670,95 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   var defaultPreviousStart = '';
   var defaultPreviousEnd = '';
   var circuitCaptureMethod = 'direct dashboard entry';
+  var lifecycleClientId = 'browser-' + (
+    window.crypto && window.crypto.randomUUID
+      ? window.crypto.randomUUID()
+      : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2)
+  );
+  var lifecycleHeartbeat = null;
+  var lifecycleStreamController = null;
+  var lifecycleClosing = false;
 
   function byId(id) { return document.getElementById(id); }
   function selected(name) {
     var element = document.querySelector('input[name="' + name + '"]:checked');
     return element ? element.value : '';
+  }
+
+  function lifecycleBody() {
+    return JSON.stringify({ client_id: lifecycleClientId });
+  }
+
+  function lifecyclePost(path) {
+    return fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: lifecycleBody(),
+      cache: 'no-store',
+      keepalive: true
+    });
+  }
+
+  function openLifecycleStream() {
+    if (lifecycleClosing || !window.AbortController || !window.ReadableStream) return;
+    lifecycleStreamController = new AbortController();
+    fetch('/api/client/watch?client_id=' + encodeURIComponent(lifecycleClientId), {
+      cache: 'no-store',
+      signal: lifecycleStreamController.signal
+    }).then(function (response) {
+      if (!response.ok || !response.body || !response.body.getReader) {
+        throw new Error('Browser lifecycle stream is unavailable.');
+      }
+      var reader = response.body.getReader();
+      function consume() {
+        return reader.read().then(function (result) {
+          if (!result.done && !lifecycleClosing) return consume();
+        });
+      }
+      return consume();
+    }).then(function () {
+      if (!lifecycleClosing) window.setTimeout(openLifecycleStream, 250);
+    }).catch(function () {
+      if (!lifecycleClosing) window.setTimeout(openLifecycleStream, 250);
+    });
+  }
+
+  function startLifecycle() {
+    lifecyclePost('/api/client/open').catch(function () {});
+    openLifecycleStream();
+    lifecycleHeartbeat = window.setInterval(function () {
+      if (!lifecycleClosing) lifecyclePost('/api/client/heartbeat').catch(function () {});
+    }, 15000);
+  }
+
+  function closeLifecycle() {
+    if (lifecycleClosing) return;
+    lifecycleClosing = true;
+    if (lifecycleHeartbeat !== null) window.clearInterval(lifecycleHeartbeat);
+    if (lifecycleStreamController !== null) lifecycleStreamController.abort();
+    var body = lifecycleBody();
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/api/client/close', new Blob([body], { type: 'application/json' }));
+    } else {
+      lifecyclePost('/api/client/close').catch(function () {});
+    }
+  }
+
+  function quitApp() {
+    if (!window.confirm('Quit Monthly AI Usage Report and stop its local server?')) return;
+    lifecycleClosing = true;
+    if (lifecycleHeartbeat !== null) window.clearInterval(lifecycleHeartbeat);
+    if (lifecycleStreamController !== null) lifecycleStreamController.abort();
+    var button = byId('quit-app');
+    button.disabled = true;
+    lifecyclePost('/api/quit')
+      .then(function (response) {
+        if (!response.ok) throw new Error('The local app could not be stopped.');
+        status('The local app has stopped. You can close this browser tab.', 'success');
+      })
+      .catch(function () {
+        status('The local app is stopping. You can close this browser tab.', 'success');
+      });
   }
 
   function updateCredentialMode() {
@@ -808,8 +895,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
           codexStatus.className = 'inline-status';
         }
         byId('dashboard-url').value = data.circuit_dashboard_url || '';
-        byId('about-version').textContent = data.version || '1.3.4';
-        byId('footer-version').textContent = data.version || '1.3.4';
+        byId('about-version').textContent = data.version || '1.3.5';
+        byId('footer-version').textContent = data.version || '1.3.5';
         byId('about-date').textContent = data.release_date || '2026-08-06';
         var profile = byId('aws-profile');
         (data.aws_profiles || []).forEach(function (name) {
@@ -1285,6 +1372,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   });
   byId('browse-bedrock').addEventListener('click', function () { selectPath('file', 'bedrock-script'); });
   byId('browse-codex').addEventListener('click', function () { selectPath('directory', 'sessions-dir'); });
+  byId('quit-app').addEventListener('click', quitApp);
   byId('open-about').addEventListener('click', openAbout);
   byId('close-about').addEventListener('click', closeAbout);
   byId('view-formatted').addEventListener('click', function () { setReportView('formatted'); });
@@ -1292,6 +1380,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   updateCredentialMode();
   updateCircuitMode();
   byId('local-app-url').textContent = window.location.origin + '/';
+  window.addEventListener('pagehide', closeLifecycle);
+  startLifecycle();
   loadDefaults();
 })();
 </script>

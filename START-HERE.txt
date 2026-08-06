@@ -48,10 +48,14 @@ Open Circuit, paste the visible dashboard page text, then use the app to
 extract and verify month-to-date tokens and approximate cost. Generate the
 report, review the formatted table, and export Markdown, Word-compatible .doc,
 or Print / Save PDF.
+Close the final report tab to stop the local app after a short grace period, or
+choose Quit app for an immediate shutdown.
 
 Security and limitations
 ------------------------
-- The server is available only on this computer and stops when its terminal closes.
+- The server is available only on this computer. Closing the final report tab
+  stops it automatically; a heartbeat watchdog also cleans up after a browser
+  crash. Closing the source launcher's terminal remains a fallback.
 - AWS credentials stay in memory for one collector run and are never saved.
 - Desktop builds verify HTTPS through macOS Keychain or Windows CryptoAPI so
   organization-managed root certificates are honored. Administrators may set

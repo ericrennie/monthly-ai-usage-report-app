@@ -44,6 +44,7 @@ class MacPackagingTests(unittest.TestCase):
 
     def test_desktop_instructions_name_only_the_app(self) -> None:
         self.assertIn("single Monthly AI Usage Report app", BUILDER.DESKTOP_START_HERE)
+        self.assertIn("Quit app", BUILDER.DESKTOP_START_HERE)
         self.assertNotIn("START-MAC.command", BUILDER.DESKTOP_START_HERE)
 
 
