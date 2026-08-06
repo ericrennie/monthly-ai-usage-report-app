@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import os
 import platform
+import plistlib
 import shutil
 import stat
 import subprocess
@@ -16,8 +17,10 @@ import zipfile
 from pathlib import Path
 
 
-APP_VERSION = "1.3.3"
+APP_VERSION = "1.3.4"
 APP_EXECUTABLE = "Monthly-AI-Usage-Report"
+MAC_APP_NAME = "Monthly AI Usage Report.app"
+MAC_BUNDLE_IDENTIFIER = "com.ericrennie.monthly-ai-usage-report"
 PACKAGE_FOLDER = "Monthly-AI-Usage-Report-App"
 SOURCE_ROOT = Path(__file__).resolve().parent.parent
 REQUIRED_PATHS = (
@@ -27,13 +30,6 @@ REQUIRED_PATHS = (
     Path("scripts/bedrock_usage_check.py"),
     Path("tzdata"),
 )
-
-MAC_LAUNCHER = f"""#!/bin/zsh
-set -eu
-
-app_dir="${{0:A:h}}"
-exec "$app_dir/{APP_EXECUTABLE}"
-"""
 
 WINDOWS_LAUNCHER = rf"""@echo off
 setlocal
@@ -48,17 +44,17 @@ runtime used only by the app; it does not install or change system Python.
 
 macOS
 -----
-1. Double-click START-MAC.command.
-2. If macOS says it cannot verify the launcher, click Done. Do not click Move
-   to Trash if you intend to verify and run this download.
-3. Open Apple menu > System Settings > Privacy & Security, scroll to Security,
-   and click Open Anyway beside START-MAC.command. This option is normally
-   available for about one hour after the blocked launch.
-4. Authenticate, confirm Open, and keep the Terminal window open while using
-   the browser app. Close the Terminal window to stop the app.
-5. Only use Open Anyway after verifying the release ZIP's SHA-256 checksum. If
-   it is unavailable on a managed Mac, contact IT; do not disable Gatekeeper or
-   remove quarantine attributes.
+1. From the DMG, drag Monthly AI Usage Report to Applications, then open it.
+   From the ZIP, open the single Monthly AI Usage Report app directly.
+2. A Developer ID-signed and Apple-notarized release opens normally. An
+   unsigned development release still requires one macOS approval for the app,
+   but no shell launcher or second executable approval.
+3. Only approve an unsigned build after verifying its release file's SHA-256 checksum and
+   following your organization's software policy. If macOS blocks it, try once,
+   then use System Settings > Privacy & Security > Open Anyway. Managed-device
+   users should contact IT; never disable Gatekeeper or remove quarantine.
+4. Quit Monthly AI Usage Report from the Dock or Activity Monitor to stop the
+   local server.
 
 Windows
 -------
@@ -143,9 +139,133 @@ def pyinstaller_arguments(root: Path, temporary: Path) -> list[str]:
         "--hidden-import",
         "truststore",
     ]
+    if sys.platform == "darwin":
+        identity = os.environ.get("MACOS_CODESIGN_IDENTITY", "").strip()
+        if identity:
+            arguments.extend(["--codesign-identity", identity])
     if sys.platform == "win32":
         arguments.extend(["--hidden-import", "winreg"])
     return arguments
+
+
+def macos_info_plist() -> dict[str, object]:
+    """Return metadata for the single macOS application bundle."""
+    return {
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleDisplayName": "Monthly AI Usage Report",
+        "CFBundleExecutable": APP_EXECUTABLE,
+        "CFBundleIdentifier": MAC_BUNDLE_IDENTIFIER,
+        "CFBundleInfoDictionaryVersion": "6.0",
+        "CFBundleName": "Monthly AI Usage Report",
+        "CFBundlePackageType": "APPL",
+        "CFBundleShortVersionString": APP_VERSION,
+        "CFBundleVersion": APP_VERSION,
+        "LSApplicationCategoryType": "public.app-category.productivity",
+        "LSMinimumSystemVersion": "12.0",
+        "NSHighResolutionCapable": True,
+        "NSHumanReadableCopyright": "Copyright 2026 Eric Rennie",
+    }
+
+
+def run_checked(args: list[str], *, timeout: int = 300) -> subprocess.CompletedProcess[str]:
+    completed = subprocess.run(args, check=False, capture_output=True, text=True, timeout=timeout)
+    if completed.returncode:
+        detail = completed.stderr.strip() or completed.stdout.strip() or f"exit {completed.returncode}"
+        raise RuntimeError(f"{' '.join(args[:2])} failed: {detail}")
+    return completed
+
+
+def create_macos_app(executable: Path, release_dir: Path) -> tuple[Path, Path]:
+    """Wrap the console-capable frozen runtime in one Finder-launchable app."""
+    app = release_dir / MAC_APP_NAME
+    contents = app / "Contents"
+    macos = contents / "MacOS"
+    resources = contents / "Resources"
+    macos.mkdir(parents=True)
+    resources.mkdir()
+    target_executable = macos / APP_EXECUTABLE
+    shutil.copy2(executable, target_executable)
+    target_executable.chmod(
+        target_executable.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+    )
+    with (contents / "Info.plist").open("wb") as handle:
+        plistlib.dump(macos_info_plist(), handle, fmt=plistlib.FMT_XML, sort_keys=True)
+
+    identity = os.environ.get("MACOS_CODESIGN_IDENTITY", "").strip() or "-"
+    codesign = ["codesign", "--force", "--deep", "--sign", identity]
+    if identity != "-":
+        codesign[1:1] = ["--options", "runtime", "--timestamp"]
+    codesign.append(str(app))
+    run_checked(codesign)
+    run_checked(["codesign", "--verify", "--deep", "--strict", "--verbose=2", str(app)])
+    return app, target_executable
+
+
+def create_macos_dmg(app: Path, output_dir: Path, tag: str) -> Path:
+    """Create a drag-to-Applications disk image and optionally notarize it."""
+    dmg = output_dir / f"monthly-ai-usage-report-app-v{APP_VERSION}-{tag}.dmg"
+    if dmg.exists():
+        dmg.unlink()
+    with tempfile.TemporaryDirectory(prefix="monthly-ai-dmg-") as staging_name:
+        staging = Path(staging_name)
+        shutil.copytree(app, staging / app.name, symlinks=True)
+        os.symlink("/Applications", staging / "Applications")
+        run_checked(
+            [
+                "hdiutil",
+                "create",
+                "-volname",
+                "Monthly AI Usage Report",
+                "-srcfolder",
+                str(staging),
+                "-ov",
+                "-format",
+                "UDZO",
+                str(dmg),
+            ]
+        )
+
+    identity = os.environ.get("MACOS_CODESIGN_IDENTITY", "").strip()
+    if identity:
+        run_checked(["codesign", "--force", "--sign", identity, "--timestamp", str(dmg)])
+
+    notary_profile = os.environ.get("MACOS_NOTARY_KEYCHAIN_PROFILE", "").strip()
+    if notary_profile:
+        if not identity:
+            raise RuntimeError("MACOS_NOTARY_KEYCHAIN_PROFILE requires MACOS_CODESIGN_IDENTITY.")
+        run_checked(
+            ["xcrun", "notarytool", "submit", str(dmg), "--keychain-profile", notary_profile, "--wait"],
+            timeout=1800,
+        )
+        run_checked(["xcrun", "stapler", "staple", str(dmg)])
+        run_checked(["xcrun", "stapler", "validate", str(dmg)])
+    return dmg
+
+
+def notarize_macos_app(app: Path) -> None:
+    """Notarize and staple the app before placing it in ZIP and DMG containers."""
+    notary_profile = os.environ.get("MACOS_NOTARY_KEYCHAIN_PROFILE", "").strip()
+    if not notary_profile:
+        return
+    if not os.environ.get("MACOS_CODESIGN_IDENTITY", "").strip():
+        raise RuntimeError("MACOS_NOTARY_KEYCHAIN_PROFILE requires MACOS_CODESIGN_IDENTITY.")
+    with tempfile.TemporaryDirectory(prefix="monthly-ai-notary-") as temporary_name:
+        submission = Path(temporary_name) / "Monthly-AI-Usage-Report.zip"
+        run_checked(["ditto", "-c", "-k", "--keepParent", str(app), str(submission)])
+        run_checked(
+            [
+                "xcrun",
+                "notarytool",
+                "submit",
+                str(submission),
+                "--keychain-profile",
+                notary_profile,
+                "--wait",
+            ],
+            timeout=1800,
+        )
+    run_checked(["xcrun", "stapler", "staple", str(app)])
+    run_checked(["xcrun", "stapler", "validate", str(app)])
 
 
 def archive_tree(source: Path, destination: Path) -> None:
@@ -162,7 +282,7 @@ def archive_tree(source: Path, destination: Path) -> None:
                 archive.writestr(info, handle.read(), compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
 
 
-def build(output_dir: Path) -> tuple[Path, Path]:
+def build(output_dir: Path) -> tuple[Path, Path, Path | None]:
     root = SOURCE_ROOT
     verify_sources(root)
     try:
@@ -190,10 +310,12 @@ def build(output_dir: Path) -> tuple[Path, Path]:
         built_executable = temporary / "dist" / executable_name
         if not built_executable.is_file():
             raise RuntimeError(f"PyInstaller did not create {built_executable}")
-        target_executable = release_dir / executable_name
-        shutil.copy2(built_executable, target_executable)
-        if sys.platform != "win32":
-            target_executable.chmod(target_executable.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        if sys.platform == "darwin":
+            app, target_executable = create_macos_app(built_executable, release_dir)
+        else:
+            app = None
+            target_executable = release_dir / executable_name
+            shutil.copy2(built_executable, target_executable)
 
     completed = subprocess.run(
         [str(target_executable), "--self-test"],
@@ -207,19 +329,23 @@ def build(output_dir: Path) -> tuple[Path, Path]:
 
     if sys.platform == "win32":
         write_text(release_dir / "START-WINDOWS.bat", WINDOWS_LAUNCHER, newline="\r\n")
-    else:
-        launcher = release_dir / "START-MAC.command"
-        write_text(launcher, MAC_LAUNCHER)
-        launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     write_text(release_dir / "START-HERE.txt", DESKTOP_START_HERE)
     if (root / "README.md").is_file():
         shutil.copy2(root / "README.md", release_dir / "README.md")
     write_text(release_dir / "VERSION.txt", f"Version: {APP_VERSION}\nPlatform: {tag}\n")
 
+    if app is not None:
+        notarize_macos_app(app)
+        dmg = create_macos_dmg(app, output_dir, tag)
+    else:
+        dmg = None
     archive_tree(release_dir, archive)
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     write_text(archive.with_suffix(archive.suffix + ".sha256"), f"{digest}  {archive.name}\n")
-    return release_dir, archive
+    if dmg is not None:
+        dmg_digest = hashlib.sha256(dmg.read_bytes()).hexdigest()
+        write_text(dmg.with_suffix(dmg.suffix + ".sha256"), f"{dmg_digest}  {dmg.name}\n")
+    return release_dir, archive, dmg
 
 
 def main() -> int:
@@ -227,12 +353,14 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, default=SOURCE_ROOT / "dist")
     args = parser.parse_args()
     try:
-        release_dir, archive = build(args.output_dir)
+        release_dir, archive, dmg = build(args.output_dir)
     except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
     print(f"Desktop folder: {release_dir}")
     print(f"Desktop archive: {archive}")
+    if dmg is not None:
+        print(f"macOS disk image: {dmg}")
     return 0
 
 

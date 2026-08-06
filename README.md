@@ -14,25 +14,27 @@ not install Python, need administrator access, or alter system Python.
 
 ## Run a desktop build
 
-1. Download the ZIP matching Windows x64, macOS Apple Silicon, or macOS Intel
-   from the latest release.
-2. Extract it.
-3. Double-click `START-WINDOWS.bat` or `START-MAC.command`.
+1. Download the DMG matching your Mac, or the ZIP matching Windows x64. A
+   macOS ZIP containing the same app is also available as a fallback.
+2. On macOS, open the DMG, drag **Monthly AI Usage Report** to Applications,
+   and open the single app. The ZIP is a fallback containing the same app.
+3. On Windows, extract the ZIP and double-click `START-WINDOWS.bat`.
 
-The executable is currently unsigned. Follow your organization's software
-approval policy; do not bypass endpoint protections.
+Unsigned development assets are labeled by their release owner. Follow your
+organization's software approval policy; do not bypass endpoint protections.
 
 ### First launch on macOS
 
-If macOS says it cannot verify `START-MAC.command`:
+Developer ID-signed and Apple-notarized releases open normally. If a development
+release is unsigned and macOS says it cannot verify **Monthly AI Usage Report**:
 
 1. Click **Done**.
 2. Open **System Settings > Privacy & Security** and scroll to **Security**.
-3. Click **Open Anyway** beside `START-MAC.command` within about one hour of the
+3. Click **Open Anyway** beside **Monthly AI Usage Report** within about one hour of the
    blocked launch, authenticate, and confirm **Open**.
-4. Keep the Terminal window open while using the browser app.
+4. Open the app again. There is no shell launcher and no second executable approval.
 
-Only continue after verifying the release ZIP's SHA-256 checksum. If **Open
+Only continue after verifying the release file's SHA-256 checksum. If **Open
 Anyway** is unavailable on a managed Mac, contact IT. Do not disable Gatekeeper
 or remove quarantine attributes.
 
@@ -61,7 +63,20 @@ python scripts/build_desktop_app.py
 ```
 
 The included GitHub Actions workflow builds Windows x64, macOS Apple Silicon,
-and macOS Intel packages and runs the frozen-app self-test.
+and macOS Intel packages and runs the frozen-app self-test. macOS builds include
+a single `.app`, a drag-to-Applications DMG, a ZIP fallback, and checksums.
+
+For frictionless macOS distribution, configure the workflow's optional
+Developer ID and Apple notarization secrets. Without those credentials, macOS
+correctly requires one manual Gatekeeper approval for the unsigned app.
+
+Configure these repository secrets to sign and notarize macOS releases:
+
+- `MACOS_CERTIFICATE_BASE64`: base64-encoded Developer ID Application `.p12`
+- `MACOS_CERTIFICATE_PASSWORD`: password for that `.p12`
+- `MACOS_NOTARY_PRIVATE_KEY_BASE64`: base64-encoded App Store Connect API `.p8`
+- `MACOS_NOTARY_KEY_ID`: App Store Connect API key ID
+- `MACOS_NOTARY_ISSUER_ID`: App Store Connect issuer ID
 
 ## Bedrock setup
 
