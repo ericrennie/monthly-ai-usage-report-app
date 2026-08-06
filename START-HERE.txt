@@ -50,6 +50,10 @@ Security and limitations
 ------------------------
 - The server is available only on this computer and stops when its terminal closes.
 - AWS credentials stay in memory for one collector run and are never saved.
+- Desktop builds verify HTTPS through macOS Keychain or Windows CryptoAPI so
+  organization-managed root certificates are honored. Administrators may set
+  SSL_CERT_FILE or AWS_CA_BUNDLE to an approved PEM bundle when required; never
+  disable certificate verification.
 - Confirm the displayed AWS Lambda URL before approving collector egress.
 - The Function URL must belong to the deployed usage-collector Lambda. It is not
   a Bedrock model endpoint, function Amazon Resource Name (ARN), access key, or

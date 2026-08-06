@@ -16,7 +16,7 @@ import zipfile
 from pathlib import Path
 
 
-APP_VERSION = "1.3.2"
+APP_VERSION = "1.3.3"
 APP_EXECUTABLE = "Monthly-AI-Usage-Report"
 PACKAGE_FOLDER = "Monthly-AI-Usage-Report-App"
 SOURCE_ROOT = Path(__file__).resolve().parent.parent
@@ -73,6 +73,11 @@ default. If it is occupied, the app reopens the same version or selects another
 free local port and opens that exact address. The app is reachable only from
 this device.
 AWS credentials remain in memory for a single collector run and are not saved.
+HTTPS verification uses the certificate authorities trusted by macOS Keychain
+or Windows. Organization-managed root certificates therefore work without
+editing the app. Administrators may instead set SSL_CERT_FILE or AWS_CA_BUNDLE
+to an approved Privacy-Enhanced Mail (PEM) certificate bundle before launch.
+Never disable certificate verification.
 See README.md for full collection instructions and data boundaries.
 """
 
@@ -135,6 +140,8 @@ def pyinstaller_arguments(root: Path, temporary: Path) -> list[str]:
         "urllib.error",
         "--hidden-import",
         "urllib.request",
+        "--hidden-import",
+        "truststore",
     ]
     if sys.platform == "win32":
         arguments.extend(["--hidden-import", "winreg"])
@@ -160,9 +167,11 @@ def build(output_dir: Path) -> tuple[Path, Path]:
     verify_sources(root)
     try:
         import PyInstaller.__main__ as pyinstaller
+        import truststore  # noqa: F401 -- required inside the frozen runtime
     except ImportError as exc:
         raise RuntimeError(
-            "PyInstaller is required only on the build machine. Install requirements-build.txt first."
+            "PyInstaller and truststore are required only on the build machine. "
+            "Install requirements-build.txt first."
         ) from exc
 
     output_dir = output_dir.expanduser().resolve()

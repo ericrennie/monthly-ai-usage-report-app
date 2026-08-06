@@ -87,6 +87,9 @@ your AWS identity access.
 ## Data boundaries
 
 - Credentials stay in process memory for one collector run and are not saved.
+- Desktop builds use the native macOS or Windows certificate store for HTTPS.
+  An administrator-provided PEM bundle may be selected with `SSL_CERT_FILE` or
+  `AWS_CA_BUNDLE`; TLS verification is never disabled.
 - Local Codex telemetry is not authoritative ChatGPT subscription billing.
 - The conventional Codex sessions folder is detected automatically at runtime.
 - Circuit figures can be extracted from dashboard text the user explicitly

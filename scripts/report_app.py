@@ -7,16 +7,43 @@ request bodies, and does not persist AWS credentials or generated reports.
 
 from __future__ import annotations
 
+import os
+import sys
+
+
+def configure_tls_trust() -> tuple[str, str | None]:
+    """Prefer an explicit CA bundle, otherwise use the operating-system trust store."""
+    if os.environ.get("SSL_CERT_FILE") or os.environ.get("SSL_CERT_DIR"):
+        return "environment", None
+
+    aws_ca_bundle = os.environ.get("AWS_CA_BUNDLE")
+    if aws_ca_bundle:
+        os.environ["SSL_CERT_FILE"] = aws_ca_bundle
+        return "aws_ca_bundle", None
+
+    try:
+        import truststore
+
+        truststore.inject_into_ssl()
+    except ImportError:
+        return "python_default", "truststore is not installed"
+    except Exception as exc:  # Do not prevent source-mode startup if native trust is unavailable.
+        return "python_default", f"{type(exc).__name__}: {exc}"
+    return "operating_system", None
+
+
+# This must run before urllib/http.client import ssl so frozen desktop builds use
+# macOS Keychain or Windows CryptoAPI instead of a missing private-runtime CA file.
+TLS_TRUST_SOURCE, TLS_TRUST_ERROR = configure_tls_trust()
+
 import argparse
 import ast
 import configparser
 import errno
 import json
-import os
 import re
 import runpy
 import subprocess
-import sys
 import threading
 import webbrowser
 from datetime import date, datetime, timedelta
@@ -45,7 +72,7 @@ BUNDLED_BEDROCK_SCRIPT = SKILL_DIR / "scripts" / "bedrock_usage_check.py"
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
 DEFAULT_CIRCUIT_URL = "https://circuit.cisco.com/app/usage-dashboard"
-APP_VERSION = "1.3.2"
+APP_VERSION = "1.3.3"
 RELEASE_DATE = "2026-08-05"
 
 
@@ -345,6 +372,19 @@ def failure(category: str, message: str, remediation: str, retrieved: str) -> di
 
 def bedrock_failure(message: str, retrieved: str) -> dict[str, Any]:
     lower = message.lower()
+    if (
+        "certificate_verify_failed" in lower
+        or "certificate verify failed" in lower
+        or "unable to get local issuer certificate" in lower
+    ):
+        return failure(
+            "certificate_verification_failed",
+            message,
+            "Verify that the organization's approved root certificates are installed in the operating-system "
+            "trust store. If an administrator supplied a CA bundle, set SSL_CERT_FILE or AWS_CA_BUNDLE to its "
+            "path and restart the app. Do not disable TLS certificate verification.",
+            retrieved,
+        )
     if "403" in lower or "access denied" in lower:
         return failure(
             "access_denied_403",
@@ -882,6 +922,7 @@ class ReportHandler(BaseHTTPRequestHandler):
                     "circuit_dashboard_url": DEFAULT_CIRCUIT_URL,
                     "version": APP_VERSION,
                     "release_date": RELEASE_DATE,
+                    "tls_trust_source": TLS_TRUST_SOURCE,
                 },
             )
             return
@@ -954,12 +995,16 @@ def main() -> int:
             "bedrock_collector": BUNDLED_BEDROCK_SCRIPT.is_file(),
             "timezone_data": BUNDLED_TZDATA.is_dir(),
             "collector_subprocess": code == 0 and data is not None,
+            "native_certificate_store": not getattr(sys, "frozen", False)
+            or TLS_TRUST_SOURCE in {"operating_system", "environment", "aws_ca_bundle"},
         }
         print(
             json.dumps(
                 {
                     "version": APP_VERSION,
                     "frozen": bool(getattr(sys, "frozen", False)),
+                    "tls_trust_source": TLS_TRUST_SOURCE,
+                    "tls_trust_error": TLS_TRUST_ERROR,
                     "checks": checks,
                     "message": "ok" if all(checks.values()) else message,
                 }
