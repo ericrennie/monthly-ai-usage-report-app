@@ -45,6 +45,7 @@ import re
 import runpy
 import subprocess
 import threading
+import time
 import webbrowser
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -52,7 +53,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones, reset_tzpath
 
@@ -72,8 +73,13 @@ BUNDLED_BEDROCK_SCRIPT = SKILL_DIR / "scripts" / "bedrock_usage_check.py"
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
 DEFAULT_CIRCUIT_URL = "https://circuit.cisco.com/app/usage-dashboard"
-APP_VERSION = "1.3.4"
+APP_VERSION = "1.3.5"
 RELEASE_DATE = "2026-08-06"
+CLIENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
+CLIENT_CLOSE_GRACE_SECONDS = 3.0
+CLIENT_STALE_SECONDS = 600.0
+CLIENT_WATCH_INTERVAL_SECONDS = 15.0
+CLIENT_STREAM_INTERVAL_SECONDS = 1.0
 
 
 def python_script_command(script: Path, *arguments: str) -> list[str]:
@@ -857,6 +863,117 @@ def process_report(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def validated_client_id(payload: dict[str, Any]) -> str:
+    client_id = str(payload.get("client_id") or "").strip()
+    if not CLIENT_ID_PATTERN.fullmatch(client_id):
+        raise ValueError("Invalid browser client identifier.")
+    return client_id
+
+
+class ReportServer(ThreadingHTTPServer):
+    """Track browser clients and stop the local process after the final tab closes."""
+
+    daemon_threads = True
+
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        request_handler: type[BaseHTTPRequestHandler],
+        *,
+        close_grace_seconds: float = CLIENT_CLOSE_GRACE_SECONDS,
+        stale_seconds: float = CLIENT_STALE_SECONDS,
+        watch_interval_seconds: float = CLIENT_WATCH_INTERVAL_SECONDS,
+        stream_interval_seconds: float = CLIENT_STREAM_INTERVAL_SECONDS,
+    ) -> None:
+        self._close_grace_seconds = close_grace_seconds
+        self._stale_seconds = stale_seconds
+        self._watch_interval_seconds = watch_interval_seconds
+        self.stream_interval_seconds = stream_interval_seconds
+        self._client_lock = threading.Lock()
+        self._clients: dict[str, float] = {}
+        self._had_browser_client = False
+        self._quit_requested = False
+        self._shutdown_generation = 0
+        self._shutdown_timer: threading.Timer | None = None
+        self._watch_stop = threading.Event()
+        super().__init__(server_address, request_handler)
+        self._watch_thread = threading.Thread(target=self._watch_clients, daemon=True)
+        self._watch_thread.start()
+
+    def register_client(self, client_id: str) -> bool:
+        timer: threading.Timer | None = None
+        with self._client_lock:
+            if self._quit_requested:
+                return False
+            self._clients[client_id] = time.monotonic()
+            self._had_browser_client = True
+            self._shutdown_generation += 1
+            timer = self._shutdown_timer
+            self._shutdown_timer = None
+        if timer is not None:
+            timer.cancel()
+        return True
+
+    def close_client(self, client_id: str) -> None:
+        with self._client_lock:
+            existed = self._clients.pop(client_id, None) is not None
+            if existed and not self._clients and not self._quit_requested:
+                self._schedule_shutdown_locked(self._close_grace_seconds, force=False)
+
+    def client_is_active(self, client_id: str) -> bool:
+        with self._client_lock:
+            return client_id in self._clients and not self._quit_requested
+
+    def request_quit(self, delay: float = 0.25) -> None:
+        with self._client_lock:
+            self._quit_requested = True
+            self._clients.clear()
+            self._schedule_shutdown_locked(delay, force=True)
+
+    def _schedule_shutdown_locked(self, delay: float, *, force: bool) -> None:
+        self._shutdown_generation += 1
+        generation = self._shutdown_generation
+        if self._shutdown_timer is not None:
+            self._shutdown_timer.cancel()
+        timer = threading.Timer(max(0.0, delay), self._finish_shutdown, args=(generation, force))
+        timer.daemon = True
+        self._shutdown_timer = timer
+        timer.start()
+
+    def _finish_shutdown(self, generation: int, force: bool) -> None:
+        with self._client_lock:
+            if generation != self._shutdown_generation:
+                return
+            if self._clients and not force:
+                return
+            self._shutdown_timer = None
+        self.shutdown()
+
+    def _watch_clients(self) -> None:
+        while not self._watch_stop.wait(self._watch_interval_seconds):
+            now = time.monotonic()
+            with self._client_lock:
+                if self._quit_requested:
+                    continue
+                stale = [
+                    client_id
+                    for client_id, seen_at in self._clients.items()
+                    if now - seen_at >= self._stale_seconds
+                ]
+                for client_id in stale:
+                    self._clients.pop(client_id, None)
+                if self._had_browser_client and not self._clients and self._shutdown_timer is None:
+                    self._schedule_shutdown_locked(self._close_grace_seconds, force=False)
+
+    def server_close(self) -> None:
+        self._watch_stop.set()
+        with self._client_lock:
+            if self._shutdown_timer is not None:
+                self._shutdown_timer.cancel()
+                self._shutdown_timer = None
+        super().server_close()
+
+
 class ReportHandler(BaseHTTPRequestHandler):
     server_version = f"MonthlyAIUsageReport/{APP_VERSION}"
 
@@ -881,9 +998,41 @@ class ReportHandler(BaseHTTPRequestHandler):
         self.security_headers("application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            return
 
     def do_GET(self) -> None:  # noqa: N802
+        parsed_url = urlparse(self.path)
+        if parsed_url.path == "/api/client/watch":
+            try:
+                client_id = validated_client_id(
+                    {"client_id": parse_qs(parsed_url.query).get("client_id", [""])[0]}
+                )
+                if not isinstance(self.server, ReportServer):
+                    raise RuntimeError("Browser lifecycle server is unavailable.")
+                if not self.server.register_client(client_id):
+                    self.send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "The local app is stopping."})
+                    return
+            except ValueError as exc:
+                self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            self.send_response(HTTPStatus.OK)
+            self.security_headers("text/event-stream; charset=utf-8")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            try:
+                while self.server.client_is_active(client_id):
+                    self.wfile.write(b": browser-lifecycle\n\n")
+                    self.wfile.flush()
+                    time.sleep(self.server.stream_interval_seconds)
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                pass
+            finally:
+                self.close_connection = True
+                self.server.close_client(client_id)
+            return
         if self.path == "/":
             try:
                 body = HTML_PATH.read_bytes()
@@ -929,7 +1078,14 @@ class ReportHandler(BaseHTTPRequestHandler):
         self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
 
     def do_POST(self) -> None:  # noqa: N802
-        if self.path not in {"/api/run", "/api/select-path"}:
+        if self.path not in {
+            "/api/run",
+            "/api/select-path",
+            "/api/client/open",
+            "/api/client/heartbeat",
+            "/api/client/close",
+            "/api/quit",
+        }:
             self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
             return
         origin = self.headers.get("Origin", "")
@@ -948,6 +1104,23 @@ class ReportHandler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length))
             if not isinstance(payload, dict):
                 raise ValueError("Request must be a JSON object.")
+            if self.path.startswith("/api/client/"):
+                client_id = validated_client_id(payload)
+                if not isinstance(self.server, ReportServer):
+                    raise RuntimeError("Browser lifecycle server is unavailable.")
+                if self.path == "/api/client/close":
+                    self.server.close_client(client_id)
+                    self.send_json(HTTPStatus.OK, {"ok": True})
+                    return
+                registered = self.server.register_client(client_id)
+                self.send_json(HTTPStatus.OK, {"ok": registered})
+                return
+            if self.path == "/api/quit":
+                if not isinstance(self.server, ReportServer):
+                    raise RuntimeError("Browser lifecycle server is unavailable.")
+                self.send_json(HTTPStatus.OK, {"ok": True})
+                self.server.request_quit()
+                return
             if self.path == "/api/select-path":
                 kind = str(payload.get("kind") or "")
                 selected = select_local_path(kind)
@@ -1015,7 +1188,7 @@ def main() -> int:
         print(f"Error: app asset not found: {HTML_PATH}", file=sys.stderr)
         return 2
     try:
-        server = ThreadingHTTPServer(("127.0.0.1", args.port), ReportHandler)
+        server = ReportServer(("127.0.0.1", args.port), ReportHandler)
     except OSError as exc:
         if exc.errno != errno.EADDRINUSE or args.port == 0:
             print(f"Error: could not start local app: {exc}", file=sys.stderr)
@@ -1028,7 +1201,7 @@ def main() -> int:
                 webbrowser.open(existing_url)
             return 0
         try:
-            server = ThreadingHTTPServer(("127.0.0.1", 0), ReportHandler)
+            server = ReportServer(("127.0.0.1", 0), ReportHandler)
         except OSError as fallback_exc:
             print(f"Error: could not start local app: {fallback_exc}", file=sys.stderr)
             return 2

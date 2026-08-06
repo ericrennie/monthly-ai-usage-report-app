@@ -50,7 +50,9 @@ The launcher opens the correct local address in the default browser. The
 preferred address is `http://127.0.0.1:8765/`, but the port can differ when that
 address is occupied. Use the address opened by the launcher instead of typing a
 saved localhost URL. The app remains available only on the local computer. See
-`START-HERE.txt` for collection and security details.
+`START-HERE.txt` for collection and security details. Closing the final report
+tab stops the local app after a short grace period; choose **Quit app** for an
+immediate shutdown. A heartbeat watchdog stops the app after a browser crash.
 
 ## Build desktop packages
 
@@ -63,8 +65,10 @@ python scripts/build_desktop_app.py
 ```
 
 The included GitHub Actions workflow builds Windows x64, macOS Apple Silicon,
-and macOS Intel packages and runs the frozen-app self-test. macOS builds include
-a single `.app`, a drag-to-Applications DMG, a ZIP fallback, and checksums.
+and macOS Intel packages, runs the frozen-app self-test on every desktop target,
+and verifies browser lifecycle behavior in current Chrome and Firefox. macOS
+builds include a single `.app`, a drag-to-Applications DMG, a ZIP fallback, and
+checksums.
 
 For frictionless macOS distribution, configure the workflow's optional
 Developer ID and Apple notarization secrets. Without those credentials, macOS

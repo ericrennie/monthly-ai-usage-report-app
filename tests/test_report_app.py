@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import threading
+import time
 import unittest
 from pathlib import Path
+from urllib.request import urlopen
 from unittest.mock import patch
 
 
@@ -48,6 +51,68 @@ class BedrockFailureTests(unittest.TestCase):
         self.assertEqual(result["failure"]["category"], "certificate_verification_failed")
         self.assertNotIn("refresh", result["failure"]["remediation"].lower())
         self.assertIn("Do not disable TLS", result["failure"]["remediation"])
+
+
+class BrowserLifecycleTests(unittest.TestCase):
+    def make_server(self, *, close_delay: float = 0.03) -> tuple[object, threading.Thread]:
+        server = REPORT_APP.ReportServer(
+            ("127.0.0.1", 0),
+            REPORT_APP.ReportHandler,
+            close_grace_seconds=close_delay,
+            stale_seconds=60.0,
+            watch_interval_seconds=0.01,
+            stream_interval_seconds=0.01,
+        )
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        return server, thread
+
+    def stop_server(self, server: object, thread: threading.Thread) -> None:
+        if thread.is_alive():
+            server.request_quit(delay=0.0)
+            thread.join(timeout=1.0)
+        server.server_close()
+
+    def test_last_browser_tab_stops_server(self) -> None:
+        server, thread = self.make_server()
+        try:
+            self.assertTrue(server.register_client("browser-client-one"))
+            server.close_client("browser-client-one")
+            thread.join(timeout=1.0)
+            self.assertFalse(thread.is_alive())
+        finally:
+            self.stop_server(server, thread)
+
+    def test_reload_during_grace_period_cancels_shutdown(self) -> None:
+        server, thread = self.make_server(close_delay=0.15)
+        try:
+            self.assertTrue(server.register_client("browser-client-old"))
+            server.close_client("browser-client-old")
+            time.sleep(0.02)
+            self.assertTrue(server.register_client("browser-client-new"))
+            time.sleep(0.18)
+            self.assertTrue(thread.is_alive())
+        finally:
+            self.stop_server(server, thread)
+
+    def test_lifecycle_messages_reject_invalid_client_identifier(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Invalid browser client identifier"):
+            REPORT_APP.validated_client_id({"client_id": "bad id"})
+
+    def test_disconnected_browser_stream_stops_server(self) -> None:
+        server, thread = self.make_server()
+        try:
+            port = server.server_address[1]
+            response = urlopen(
+                f"http://127.0.0.1:{port}/api/client/watch?client_id=browser-stream-one",
+                timeout=1.0,
+            )
+            self.assertIn(b"browser-lifecycle", response.readline())
+            response.close()
+            thread.join(timeout=1.0)
+            self.assertFalse(thread.is_alive())
+        finally:
+            self.stop_server(server, thread)
 
 
 if __name__ == "__main__":

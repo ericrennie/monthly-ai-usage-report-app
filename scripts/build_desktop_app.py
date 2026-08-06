@@ -17,7 +17,7 @@ import zipfile
 from pathlib import Path
 
 
-APP_VERSION = "1.3.4"
+APP_VERSION = "1.3.5"
 APP_EXECUTABLE = "Monthly-AI-Usage-Report"
 MAC_APP_NAME = "Monthly AI Usage Report.app"
 MAC_BUNDLE_IDENTIFIER = "com.ericrennie.monthly-ai-usage-report"
@@ -53,8 +53,9 @@ macOS
    following your organization's software policy. If macOS blocks it, try once,
    then use System Settings > Privacy & Security > Open Anyway. Managed-device
    users should contact IT; never disable Gatekeeper or remove quarantine.
-4. Quit Monthly AI Usage Report from the Dock or Activity Monitor to stop the
-   local server.
+4. Closing the final report tab stops the local app after a short grace period.
+   Use the page's Quit app button for an immediate shutdown. If the browser
+   crashes, the heartbeat watchdog closes the app automatically.
 
 Windows
 -------
@@ -62,6 +63,8 @@ Windows
 2. Keep the command window open while using the browser app. Close it to stop.
 3. If Microsoft Defender SmartScreen blocks the unsigned download, use an
    organization-approved signed build rather than bypassing security policy.
+4. The local browser interface supports current Google Chrome and Mozilla
+   Firefox on Windows, as well as the operating system's default browser.
 
 Double-click the launcher and use the browser address it opens automatically.
 Do not type a saved localhost address: 127.0.0.1:8765 is only the preferred
