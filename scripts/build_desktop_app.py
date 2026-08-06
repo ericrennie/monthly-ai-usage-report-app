@@ -16,7 +16,7 @@ import zipfile
 from pathlib import Path
 
 
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.3.1"
 APP_EXECUTABLE = "Monthly-AI-Usage-Report"
 PACKAGE_FOLDER = "Monthly-AI-Usage-Report-App"
 SOURCE_ROOT = Path(__file__).resolve().parent.parent

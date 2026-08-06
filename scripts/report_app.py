@@ -42,18 +42,10 @@ if BUNDLED_TZDATA.is_dir():
     reset_tzpath((str(BUNDLED_TZDATA),))
 
 BUNDLED_BEDROCK_SCRIPT = SKILL_DIR / "scripts" / "bedrock_usage_check.py"
-DEFAULT_BEDROCK_SCRIPT = Path(
-    os.environ.get(
-        "BEDROCK_USAGE_SCRIPT",
-        BUNDLED_BEDROCK_SCRIPT
-        if BUNDLED_BEDROCK_SCRIPT.is_file()
-        else Path.home() / ".bedrock" / "bedrock_usage_check.py",
-    )
-)
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
 DEFAULT_CIRCUIT_URL = "https://circuit.cisco.com/app/usage-dashboard"
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.3.1"
 RELEASE_DATE = "2026-08-05"
 
 
@@ -190,6 +182,25 @@ def validate_timezone(value: str) -> str:
 def resolve_local_path(value: str, default: Path) -> Path:
     path = Path(value or str(default)).expanduser()
     return path if path.is_absolute() else (SKILL_DIR / path).resolve()
+
+
+def bedrock_script_details() -> tuple[Path, bool, str]:
+    """Return the first valid Bedrock collector from predictable local locations."""
+    configured = os.environ.get("BEDROCK_USAGE_SCRIPT", "").strip()
+    configured_path = Path(configured).expanduser() if configured else None
+    if configured_path and configured_path.is_file():
+        return configured_path.resolve(), True, "environment"
+
+    conventional = Path.home() / ".bedrock" / "bedrock_usage_check.py"
+    if conventional.is_file():
+        return conventional.resolve(), True, "conventional"
+
+    if BUNDLED_BEDROCK_SCRIPT.is_file():
+        return BUNDLED_BEDROCK_SCRIPT.resolve(), True, "bundled"
+
+    if configured_path:
+        return configured_path, False, "environment_missing"
+    return conventional, False, "missing"
 
 
 def codex_sessions_details() -> tuple[str, bool, int]:
@@ -381,7 +392,8 @@ def collect_bedrock(
             retrieved,
         )
 
-    script = resolve_local_path(str(config.get("script") or ""), DEFAULT_BEDROCK_SCRIPT)
+    default_script, _, _ = bedrock_script_details()
+    script = resolve_local_path(str(config.get("script") or ""), default_script)
     if not script.is_file():
         return failure(
             "collector_missing",
@@ -848,11 +860,7 @@ class ReportHandler(BaseHTTPRequestHandler):
             timezone_name = local_timezone_name()
             timezone = ZoneInfo(timezone_name)
             period_start, period_end = previous_month_dates(datetime.now(timezone))
-            default_script = (
-                "scripts/bedrock_usage_check.py"
-                if BUNDLED_BEDROCK_SCRIPT.is_file()
-                else "~/.bedrock/bedrock_usage_check.py"
-            )
+            default_script, bedrock_found, bedrock_source = bedrock_script_details()
             sessions_dir, sessions_found, sessions_count = codex_sessions_details()
             self.send_json(
                 HTTPStatus.OK,
@@ -861,9 +869,11 @@ class ReportHandler(BaseHTTPRequestHandler):
                     "end_date": period_end.isoformat(),
                     "timezone": timezone_name,
                     "timezones": sorted(available_timezones()),
-                    "bedrock_script": default_script,
+                    "bedrock_script": str(default_script),
                     "bedrock_script_example": "~/tools/bedrock_usage_check.py",
-                    "bedrock_lambda_url": configured_lambda_url(DEFAULT_BEDROCK_SCRIPT),
+                    "bedrock_script_found": bedrock_found,
+                    "bedrock_script_source": bedrock_source,
+                    "bedrock_lambda_url": configured_lambda_url(default_script),
                     "aws_profiles": available_profiles(),
                     "codex_sessions_dir": sessions_dir,
                     "codex_sessions_example": "~/.codex/sessions",
