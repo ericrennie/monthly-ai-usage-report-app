@@ -427,7 +427,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
         <div class="field full">
           <label for="lambda-url">Usage collector Lambda Function URL</label>
           <input id="lambda-url" type="text" spellcheck="false" placeholder="https://abcde12345.lambda-url.us-east-1.on.aws/">
-          <span class="help">The secure HTTPS address of the deployed usage-collector backend. It is not a Bedrock model endpoint, AWS sign-in page, function Amazon Resource Name (ARN), or access key.</span>
+          <div id="lambda-detection-status" class="inline-status" aria-live="polite"></div>
+          <span class="help">At startup, the app automatically populates this field when the detected collector contains a configured <code>DEFAULT_LAMBDA_URL</code>. It does not search your AWS account. Verify the displayed URL before approving egress. This is not a Bedrock model endpoint, AWS sign-in page, function Amazon Resource Name (ARN), or access key.</span>
           <details class="help-details">
             <summary>What is this URL, and where do I find it?</summary>
             <div class="help-details-body">
@@ -527,11 +528,11 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
             </div>
             <div class="field">
               <label for="circuit-tokens">Tokens used</label>
-              <input id="circuit-tokens" type="text" inputmode="numeric">
+              <input id="circuit-tokens" type="text" inputmode="numeric" autocomplete="off">
             </div>
             <div class="field">
               <label for="circuit-cost">Approximate cost</label>
-              <input id="circuit-cost" type="text" inputmode="decimal" placeholder="0.00">
+              <input id="circuit-cost" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off">
             </div>
           </div>
         </div>
@@ -618,7 +619,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     <button class="btn btn-header" type="button" id="close-about">Close</button>
   </div>
   <div class="about-body">
-    <div class="about-version"><span>Version <span id="about-version">1.3.1</span></span><span>Release date <span id="about-date">2026-08-05</span></span></div>
+    <div class="about-version"><span>Version <span id="about-version">1.3.2</span></span><span>Release date <span id="about-date">2026-08-05</span></span></div>
     <h3>How to use</h3>
     <ol>
       <li>Start the app with its launcher and use the browser address it opens. This running copy is at <code id="local-app-url">the current browser address</code>. Port 8765 is only the preferred default.</li>
@@ -629,6 +630,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     </ol>
     <h3>Release notes</h3>
     <ul>
+      <li>Corrected Circuit extraction to pair each value with its month-to-date label, reject quarter-to-date values, and clear stale form values before parsing.</li>
+      <li>Clarified automatic Lambda URL population and added a safe URL refresh when another collector file is selected.</li>
       <li>Added automatic Bedrock collector discovery from the environment, the conventional local folder, or the collector bundled with the app.</li>
       <li>Added the Circuit Usage Dashboard default, paste-first automatic extraction, and automatic Codex sessions discovery.</li>
       <li>Corrected Help and setup instructions to show the running app's exact address and treat port 8765 only as the preferred default.</li>
@@ -649,7 +652,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
 
 <footer>
   Sources: personal Bedrock collector, local Codex session telemetry, and user-verified Circuit dashboard data. Generated locally; methodology: monthly-ai-usage-report skill.<br>
-  Version <span id="footer-version">1.3.1</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
+  Version <span id="footer-version">1.3.2</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
 </footer>
 
 <script>
@@ -783,6 +786,14 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
           bedrockStatus.className = 'inline-status';
         }
         byId('lambda-url').value = data.bedrock_lambda_url || '';
+        var lambdaStatus = byId('lambda-detection-status');
+        if (data.bedrock_lambda_url) {
+          lambdaStatus.textContent = 'Populated automatically at startup from the detected collector. Verify this URL before approving egress.';
+          lambdaStatus.className = 'inline-status success';
+        } else {
+          lambdaStatus.textContent = 'The detected collector has no configured Lambda URL. Enter the verified Function URL supplied by the collector owner.';
+          lambdaStatus.className = 'inline-status';
+        }
         byId('sessions-dir').value = data.codex_sessions_dir || '';
         var codexStatus = byId('codex-detection-status');
         if (data.codex_sessions_found) {
@@ -793,8 +804,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
           codexStatus.className = 'inline-status';
         }
         byId('dashboard-url').value = data.circuit_dashboard_url || '';
-        byId('about-version').textContent = data.version || '1.3.1';
-        byId('footer-version').textContent = data.version || '1.3.1';
+        byId('about-version').textContent = data.version || '1.3.2';
+        byId('footer-version').textContent = data.version || '1.3.2';
         byId('about-date').textContent = data.release_date || '2026-08-05';
         var profile = byId('aws-profile');
         (data.aws_profiles || []).forEach(function (name) {
@@ -1130,19 +1141,35 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     node.className = 'inline-status' + (type ? ' ' + type : '');
   }
 
-  function matchDashboardValue(text, labelPattern, valuePattern) {
-    var forward = new RegExp(labelPattern + '[\\s\\S]{0,160}?(?:month[ -]?to[ -]?date|mtd)[\\s\\S]{0,100}?(' + valuePattern + ')', 'i');
-    var reverse = new RegExp('(?:month[ -]?to[ -]?date|mtd)[\\s\\S]{0,100}?' + labelPattern + '[\\s\\S]{0,100}?(' + valuePattern + ')', 'i');
-    var labelFirstValue = new RegExp(labelPattern + '[\\s\\S]{0,100}?(' + valuePattern + ')[\\s\\S]{0,100}?(?:month[ -]?to[ -]?date|mtd)', 'i');
-    return text.match(forward) || text.match(reverse) || text.match(labelFirstValue);
+  function metricCardText(text, labelPattern, otherLabelPattern) {
+    var label = text.match(new RegExp(labelPattern, 'i'));
+    if (!label) return '';
+    var card = text.slice((label.index || 0) + label[0].length);
+    var boundary = card.match(new RegExp(otherLabelPattern, 'i'));
+    if (boundary) card = card.slice(0, boundary.index);
+    return card.slice(0, 600);
+  }
+
+  function matchMonthToDateValue(card, valuePattern) {
+    if (!card) return null;
+    var windowPattern = '(?:month[ -]?to[ -]?date|mtd)';
+    var valueBeforeWindow = new RegExp('(?:^|\\n)\\s*(' + valuePattern + ')\\s*(?:\\n\\s*)?' + windowPattern + '(?:\\s|$)', 'im');
+    var windowBeforeValue = new RegExp('(?:^|\\n)\\s*' + windowPattern + '\\s*(?:\\n\\s*)?(' + valuePattern + ')(?:\\s|$)', 'im');
+    return card.match(valueBeforeWindow) || card.match(windowBeforeValue);
   }
 
   function parseCircuitDashboardText(text) {
-    var normalized = String(text || '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ');
-    var tokenMatch = matchDashboardValue(normalized, 'tokens?\\s*(?:used|usage)?', '[0-9][0-9,]*');
-    var costMatch = matchDashboardValue(normalized, 'approximate\\s+cost', '\\$?\\s*[0-9][0-9,]*(?:\\.[0-9]{1,4})?');
+    var normalized = String(text || '').replace(/\r\n?/g, '\n').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ');
+    byId('circuit-tokens').value = '';
+    byId('circuit-cost').value = '';
+    byId('circuit-confirmed').checked = false;
+    circuitCaptureMethod = 'direct dashboard entry';
+    var tokenCard = metricCardText(normalized, 'tokens?\\s*(?:used|usage)?', 'approximate\\s+cost');
+    var costCard = metricCardText(normalized, 'approximate\\s+cost', 'tokens?\\s*(?:used|usage)?');
+    var tokenMatch = matchMonthToDateValue(tokenCard, '[0-9][0-9,]*');
+    var costMatch = matchMonthToDateValue(costCard, '\\$?\\s*[0-9][0-9,]*(?:\\.[0-9]{1,4})?');
     if (!tokenMatch && !costMatch) {
-      captureStatus('No month-to-date Tokens Used or Approximate Cost values were found. The pasted text may contain only the page footer; copy the dashboard cards or enter the two figures manually.', 'error');
+      captureStatus('No month-to-date Tokens Used or Approximate Cost values were found. Previous values were cleared. Copy the complete dashboard cards, including each value and its Month-to-date label, or enter the figures manually.', 'error');
       return;
     }
     if (tokenMatch) byId('circuit-tokens').value = tokenMatch[1].replace(/[^0-9]/g, '');
@@ -1155,7 +1182,12 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     var found = [];
     if (tokenMatch) found.push('tokens');
     if (costMatch) found.push('approximate cost');
-    captureStatus('Extracted ' + found.join(' and ') + '. Review the values below and check the confirmation box.', 'success');
+    if (tokenMatch && costMatch) {
+      captureStatus('Extracted month-to-date tokens and approximate cost. Quarter-to-date values were ignored. Review the values below and check the confirmation box.', 'success');
+    } else {
+      var missing = tokenMatch ? 'approximate cost' : 'tokens';
+      captureStatus('Extracted ' + found.join(' and ') + ', but month-to-date ' + missing + ' was not found and its previous value was cleared. Copy the complete dashboard cards or enter the missing figure manually.', 'error');
+    }
   }
 
   function readCircuitClipboard() {
@@ -1194,6 +1226,15 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
             var bedrockStatus = byId('bedrock-detection-status');
             bedrockStatus.textContent = 'Collector selected manually. The app will use this file for the current run.';
             bedrockStatus.className = 'inline-status success';
+            byId('lambda-url').value = result.lambda_url || '';
+            var lambdaStatus = byId('lambda-detection-status');
+            if (result.lambda_url) {
+              lambdaStatus.textContent = 'Updated automatically from the selected collector. Verify this URL before approving egress.';
+              lambdaStatus.className = 'inline-status success';
+            } else {
+              lambdaStatus.textContent = 'The selected collector has no configured Lambda URL. Enter the verified Function URL supplied by the collector owner.';
+              lambdaStatus.className = 'inline-status';
+            }
           }
         }
       })

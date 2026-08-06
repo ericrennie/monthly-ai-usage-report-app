@@ -45,7 +45,7 @@ BUNDLED_BEDROCK_SCRIPT = SKILL_DIR / "scripts" / "bedrock_usage_check.py"
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
 DEFAULT_CIRCUIT_URL = "https://circuit.cisco.com/app/usage-dashboard"
-APP_VERSION = "1.3.1"
+APP_VERSION = "1.3.2"
 RELEASE_DATE = "2026-08-05"
 
 
@@ -908,8 +908,12 @@ class ReportHandler(BaseHTTPRequestHandler):
             if not isinstance(payload, dict):
                 raise ValueError("Request must be a JSON object.")
             if self.path == "/api/select-path":
-                selected = select_local_path(str(payload.get("kind") or ""))
-                self.send_json(HTTPStatus.OK, {"path": selected, "cancelled": selected is None})
+                kind = str(payload.get("kind") or "")
+                selected = select_local_path(kind)
+                response: dict[str, Any] = {"path": selected, "cancelled": selected is None}
+                if kind == "file" and selected:
+                    response["lambda_url"] = configured_lambda_url(Path(selected).expanduser())
+                self.send_json(HTTPStatus.OK, response)
                 return
             result = process_report(payload)
         except (json.JSONDecodeError, ValueError) as exc:
