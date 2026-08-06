@@ -134,6 +134,10 @@ def run_browser(name: str, command_builder: Callable[[Path, str], list[str]]) ->
                 expected_version = str(defaults.get("version") or "")
                 if 'id="quit-app"' not in stdout or expected_version not in stdout:
                     raise RuntimeError("Chrome did not render the lifecycle control and app version.")
+                if 'id="approve-egress" type="checkbox" checked=""' not in stdout:
+                    raise RuntimeError("Chrome did not render the preselected AWS egress acknowledgement.")
+                if 'id="circuit-confirmed" type="checkbox" checked=""' not in stdout:
+                    raise RuntimeError("Chrome did not render the preselected Circuit review acknowledgement.")
             else:
                 screenshot = Path(temporary_name) / "firefox.png"
                 if not screenshot.is_file() or screenshot.stat().st_size < 10_000:

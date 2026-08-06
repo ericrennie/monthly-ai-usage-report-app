@@ -76,5 +76,7 @@ Security and limitations
 - Browser same-origin controls prevent the local app from silently reading an
   authenticated Circuit tab. Only text you explicitly copy or paste is parsed.
 - Local Codex telemetry is not authoritative ChatGPT subscription billing.
+- Codex reports No Billing available. Circuit reports No Billing available
+  unless approximate cost is extracted from user-pasted dashboard text.
 - The Bedrock collector accepts a rolling number of days ending on retrieval;
   it does not recreate an arbitrary historical AWS range.

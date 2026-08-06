@@ -245,8 +245,8 @@ table.report-table { width: 100%; min-width: 60rem; table-layout: fixed; border-
 table.report-table th { background: var(--midnight); color: var(--card); padding: 0.8rem 0.9rem; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
 table.report-table th:nth-child(1) { width: 17%; }
 table.report-table th:nth-child(2) { width: 25%; }
-table.report-table th:nth-child(3) { width: 40%; }
-table.report-table th:nth-child(4) { width: 18%; }
+table.report-table th:nth-child(3) { width: 18%; }
+table.report-table th:nth-child(4) { width: 40%; }
 table.report-table td { padding: 0.9rem; vertical-align: top; border-bottom: 1px solid var(--border); font-size: 0.8rem; line-height: 1.55; overflow-wrap: anywhere; }
 table.report-table tbody tr:last-child td { border-bottom: 0; }
 table.report-table tbody tr:nth-child(even) { background: var(--input-bg); }
@@ -450,7 +450,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
         </div>
         <div class="field full sensitive">
           <div class="check-row">
-            <input id="approve-egress" type="checkbox">
+            <input id="approve-egress" type="checkbox" checked>
             <label for="approve-egress">I approve the collector sending a SigV4-signed request, including an access-key identifier and any temporary session-token header, to the displayed Lambda Function URL.</label>
           </div>
         </div>
@@ -476,7 +476,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-          <div><strong>No Codex credentials required</strong><p>The local collector reads only the selected sessions directory. It cannot provide authoritative ChatGPT subscription billing.</p></div>
+          <div><strong>No Codex credentials required</strong><p>The local collector reads only the selected sessions directory. Codex cost is reported as <strong>No Billing available</strong> because local telemetry cannot provide authoritative ChatGPT subscription billing.</p></div>
         </div>
       </div>
     </section>
@@ -502,6 +502,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
             <button class="btn btn-secondary" type="button" id="open-circuit">Open dashboard</button>
           </div>
           <span class="help">The Circuit Usage Dashboard is preconfigured. Open it and sign in normally. Browser security prevents this localhost app from reading another website directly, so paste the visible dashboard text below or enter the figures manually.</span>
+          <span class="help"><strong>Billing note:</strong> Circuit cost is reported as <strong>No Billing available</strong> unless the approximate cost is extracted from dashboard text you paste below.</span>
         </div>
 
         <div class="field full capture-panel">
@@ -564,7 +565,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
           <div class="field-grid">
             <div class="field full sensitive">
               <div class="check-row">
-                <input id="circuit-confirmed" type="checkbox">
+                <input id="circuit-confirmed" type="checkbox" checked>
                 <label for="circuit-confirmed">I reviewed these values against the visible Circuit Usage Dashboard and confirm the stated source window.</label>
               </div>
             </div>
@@ -620,7 +621,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     <button class="btn btn-header" type="button" id="close-about">Close</button>
   </div>
   <div class="about-body">
-    <div class="about-version"><span>Version <span id="about-version">1.3.5</span></span><span>Release date <span id="about-date">2026-08-06</span></span></div>
+    <div class="about-version"><span>Version <span id="about-version">1.3.6</span></span><span>Release date <span id="about-date">2026-08-06</span></span></div>
     <h3>How to use</h3>
     <ol>
       <li>Start the app and use the browser address it opens. This running copy is at <code id="local-app-url">the current browser address</code>. Port 8765 is only the preferred default.</li>
@@ -632,6 +633,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     </ol>
     <h3>Release notes</h3>
     <ul>
+      <li>Preselected the AWS egress and Circuit review acknowledgements, clarified unavailable billing, and moved Cost beside Source window in every report export.</li>
       <li>Added Chrome and Firefox-compatible browser lifecycle tracking so closing the final report tab stops the local app, with a crash-safe heartbeat fallback and an explicit Quit app control.</li>
       <li>Replaced the two-stage macOS shell launcher and executable with one Finder-launchable app and a drag-to-Applications disk image.</li>
       <li>Added optional Developer ID signing and Apple notarization support for a normal one-click macOS launch.</li>
@@ -653,13 +655,13 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     <h3>Author</h3>
     <p>Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a></p>
     <h3>Important boundaries</h3>
-    <p>Bedrock collection is a rolling number of days ending on the retrieval date and may not match a historical custom range. Its Function URL must point to the approved usage-collector Lambda, not a Bedrock endpoint or arbitrary Lambda. Local Codex telemetry is not authoritative ChatGPT billing. Circuit values must be reviewed by the user because browser same-origin controls prevent automatic reading of an authenticated dashboard in another tab.</p>
+    <p>Bedrock collection is a rolling number of days ending on the retrieval date and may not match a historical custom range. Its Function URL must point to the approved usage-collector Lambda, not a Bedrock endpoint or arbitrary Lambda. Codex reports <strong>No Billing available</strong>. Circuit reports <strong>No Billing available</strong> unless approximate cost is extracted from user-pasted dashboard text. Circuit values must still be reviewed because browser same-origin controls prevent automatic reading of an authenticated dashboard in another tab.</p>
   </div>
 </dialog>
 
 <footer>
   Sources: personal Bedrock collector, local Codex session telemetry, and user-verified Circuit dashboard data. Generated locally; methodology: monthly-ai-usage-report skill.<br>
-  Version <span id="footer-version">1.3.5</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
+  Version <span id="footer-version">1.3.6</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
 </footer>
 
 <script>
@@ -895,8 +897,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
           codexStatus.className = 'inline-status';
         }
         byId('dashboard-url').value = data.circuit_dashboard_url || '';
-        byId('about-version').textContent = data.version || '1.3.5';
-        byId('footer-version').textContent = data.version || '1.3.5';
+        byId('about-version').textContent = data.version || '1.3.6';
+        byId('footer-version').textContent = data.version || '1.3.6';
         byId('about-date').textContent = data.release_date || '2026-08-06';
         var profile = byId('aws-profile');
         (data.aws_profiles || []).forEach(function (name) {
@@ -1193,7 +1195,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
       'body{font-family:Arial,sans-serif;color:#1B2A3D;font-size:11pt;line-height:1.45;margin:36pt}' +
       'h1,h2,h3,strong{color:#0D274D}h1{font-size:22pt}h2{font-size:15pt;border-bottom:2px solid #00BCEB;padding-bottom:5pt}' +
       'table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12pt 0}th{background:#0D274D;color:#fff;text-align:left}' +
-      'th,td{border:1px solid #DDE3EA;padding:7pt;vertical-align:top;overflow-wrap:anywhere}th:nth-child(1){width:17%}th:nth-child(2){width:25%}th:nth-child(3){width:40%}th:nth-child(4){width:18%}' +
+      'th,td{border:1px solid #DDE3EA;padding:7pt;vertical-align:top;overflow-wrap:anywhere}th:nth-child(1){width:17%}th:nth-child(2){width:25%}th:nth-child(3){width:18%}th:nth-child(4){width:40%}' +
       'li,p{font-size:10pt}.report-table-wrap{width:100%}' +
       '</style>';
     var documentHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>AI Usage Report</title>' + styles + '</head><body>' + reportHtml + '</body></html>';
@@ -1253,7 +1255,6 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     var normalized = String(text || '').replace(/\r\n?/g, '\n').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ');
     byId('circuit-tokens').value = '';
     byId('circuit-cost').value = '';
-    byId('circuit-confirmed').checked = false;
     circuitCaptureMethod = 'direct dashboard entry';
     var tokenCard = metricCardText(normalized, 'tokens?\\s*(?:used|usage)?', 'approximate\\s+cost');
     var costCard = metricCardText(normalized, 'approximate\\s+cost', 'tokens?\\s*(?:used|usage)?');
@@ -1269,12 +1270,13 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     direct.checked = true;
     byId('circuit-window-kind').value = 'month_to_date';
     circuitCaptureMethod = 'parsed from user-copied dashboard text';
+    byId('circuit-confirmed').checked = true;
     updateCircuitMode();
     var found = [];
     if (tokenMatch) found.push('tokens');
     if (costMatch) found.push('approximate cost');
     if (tokenMatch && costMatch) {
-      captureStatus('Extracted month-to-date tokens and approximate cost. Quarter-to-date values were ignored. Review the values below and check the confirmation box.', 'success');
+      captureStatus('Extracted month-to-date tokens and approximate cost. Quarter-to-date values were ignored. The review confirmation is selected automatically; verify the values before generating the report.', 'success');
     } else {
       var missing = tokenMatch ? 'approximate cost' : 'tokens';
       captureStatus('Extracted ' + found.join(' and ') + ', but month-to-date ' + missing + ' was not found and its previous value was cleared. Copy the complete dashboard cards or enter the missing figure manually.', 'error');

@@ -5,6 +5,7 @@ import os
 import threading
 import time
 import unittest
+from datetime import date
 from pathlib import Path
 from urllib.request import urlopen
 from unittest.mock import patch
@@ -51,6 +52,84 @@ class BedrockFailureTests(unittest.TestCase):
         self.assertEqual(result["failure"]["category"], "certificate_verification_failed")
         self.assertNotIn("refresh", result["failure"]["remediation"].lower())
         self.assertIn("Do not disable TLS", result["failure"]["remediation"])
+
+
+class ReportOutputTests(unittest.TestCase):
+    @staticmethod
+    def circuit_row(report: str) -> str:
+        return next(
+            line
+            for line in report.splitlines()
+            if line.startswith("| Cisco Circuit |") or line.startswith("| Circuit |")
+        )
+
+    def sample_sources(self, circuit_method: str) -> dict[str, dict[str, object]]:
+        return {
+            "bedrock": {
+                "status": "verified",
+                "retrieved_at": "2026-08-06T12:00:00-05:00",
+                "window": "rolling 7 days",
+                "matches_selected_period": False,
+                "data": {
+                    "summary": {"api_calls": 2, "input_tokens": 10, "output_tokens": 4, "total_cost": "1.25"},
+                    "models": [],
+                },
+            },
+            "codex": {
+                "status": "verified",
+                "retrieved_at": "2026-08-06T12:00:00-05:00",
+                "data": {
+                    "sessions": 1,
+                    "usage": {
+                        "input_tokens": 10,
+                        "cached_input_tokens": 5,
+                        "cache_write_input_tokens": 0,
+                        "output_tokens": 4,
+                        "reasoning_output_tokens": 1,
+                        "total_tokens": 14,
+                        "cache_hit_rate": 0.5,
+                    },
+                },
+            },
+            "circuit": {
+                "status": "verified",
+                "retrieved_at": "2026-08-06T12:00:00-05:00",
+                "window": "Month-to-date through 2026-08-06",
+                "data": {
+                    "tokens": 100,
+                    "approximate_cost": "7.16",
+                    "method": circuit_method,
+                },
+            },
+        }
+
+    def build(self, circuit_method: str) -> str:
+        period = {
+            "label": "August 1–6, 2026",
+            "start_date": date(2026, 8, 1),
+            "end_date": date(2026, 8, 6),
+        }
+        return REPORT_APP.build_report(period, "America/Chicago", self.sample_sources(circuit_method))
+
+    def test_cost_column_precedes_usage_and_codex_has_no_billing(self) -> None:
+        report = self.build("direct dashboard entry")
+        self.assertIn("| Platform | Source window | Cost | Usage |", report)
+        codex_row = next(line for line in report.splitlines() if line.startswith("| Codex / ChatGPT |"))
+        self.assertIn("| No Billing available | 1 sessions;", codex_row)
+        circuit_row = self.circuit_row(report)
+        self.assertIn("| No Billing available | 100 tokens |", circuit_row)
+
+    def test_circuit_cost_requires_pasted_dashboard_text(self) -> None:
+        report = self.build("parsed from user-copied dashboard text")
+        circuit_row = self.circuit_row(report)
+        self.assertIn("| $7.16 approximate/informational | 100 tokens |", circuit_row)
+
+
+class UiDefaultsTests(unittest.TestCase):
+    def test_acknowledgements_are_preselected(self) -> None:
+        html = (REPORT_APP.SKILL_DIR / "assets" / "report_app.html").read_text(encoding="utf-8")
+        self.assertIn('<input id="approve-egress" type="checkbox" checked>', html)
+        self.assertIn('<input id="circuit-confirmed" type="checkbox" checked>', html)
 
 
 class BrowserLifecycleTests(unittest.TestCase):
