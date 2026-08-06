@@ -4,6 +4,9 @@ Recommended desktop download
 ----------------------------
 Use the platform-specific ZIP from the GitHub release. It includes a private
 Python runtime and does not install or change Python on the computer.
+On macOS, prefer the DMG: drag the single Monthly AI Usage Report app to
+Applications. The desktop build has no shell launcher and no second executable
+approval target.
 
 Source edition requirements
 ---------------------------

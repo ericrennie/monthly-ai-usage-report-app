@@ -72,8 +72,8 @@ BUNDLED_BEDROCK_SCRIPT = SKILL_DIR / "scripts" / "bedrock_usage_check.py"
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
 DEFAULT_CIRCUIT_URL = "https://circuit.cisco.com/app/usage-dashboard"
-APP_VERSION = "1.3.3"
-RELEASE_DATE = "2026-08-05"
+APP_VERSION = "1.3.4"
+RELEASE_DATE = "2026-08-06"
 
 
 def python_script_command(script: Path, *arguments: str) -> list[str]:
