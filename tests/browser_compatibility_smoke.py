@@ -138,6 +138,8 @@ def run_browser(name: str, command_builder: Callable[[Path, str], list[str]]) ->
                     raise RuntimeError("Chrome did not render the preselected AWS egress acknowledgement.")
                 if 'id="circuit-confirmed" type="checkbox" checked=""' not in stdout:
                     raise RuntimeError("Chrome did not render the preselected Circuit review acknowledgement.")
+                if 'class="btn-spinner"' not in stdout or 'id="run-report-label"' not in stdout:
+                    raise RuntimeError("Chrome did not render the report-generation progress indicator.")
             else:
                 screenshot = Path(temporary_name) / "firefox.png"
                 if not screenshot.is_file() or screenshot.stat().st_size < 10_000:

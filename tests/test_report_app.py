@@ -131,6 +131,13 @@ class UiDefaultsTests(unittest.TestCase):
         self.assertIn('<input id="approve-egress" type="checkbox" checked>', html)
         self.assertIn('<input id="circuit-confirmed" type="checkbox" checked>', html)
 
+    def test_report_button_has_visible_busy_state(self) -> None:
+        html = (REPORT_APP.SKILL_DIR / "assets" / "report_app.html").read_text(encoding="utf-8")
+        self.assertIn('class="btn-spinner"', html)
+        self.assertIn('id="run-report-label"', html)
+        self.assertIn("function setRunBusy(isBusy)", html)
+        self.assertIn("isBusy ? 'Generating report…'", html)
+
 
 class BrowserLifecycleTests(unittest.TestCase):
     def make_server(self, *, close_delay: float = 0.03) -> tuple[object, threading.Thread]:

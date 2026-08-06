@@ -213,6 +213,19 @@ fieldset { border: 0; }
 .btn-secondary { background: var(--card); color: var(--medium-blue); border-color: var(--medium-blue); }
 .btn-quiet { background: var(--input-bg); color: var(--text); border-color: var(--border); }
 .btn:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
+.btn.is-loading { display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; }
+.btn-spinner {
+  display: none;
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 2px solid rgba(255,255,255,0.45);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: report-spin 0.8s linear infinite;
+}
+.btn.is-loading .btn-spinner { display: inline-block; }
+@keyframes report-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .btn-spinner { animation-duration: 1.8s; } }
 
 .run-status { margin-top: 1rem; font-size: 0.8rem; color: var(--muted); min-height: 1.5rem; }
 .run-status.error { color: var(--accent-red); }
@@ -585,7 +598,12 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
 
   <div class="action-bar">
     <div class="action-copy"><strong>Generate the management report</strong><span>Missing sources remain visible and never receive invented values.</span></div>
-    <div class="button-row"><button class="btn btn-primary" type="button" id="run-report">Run collectors and generate</button></div>
+    <div class="button-row">
+      <button class="btn btn-primary" type="button" id="run-report" aria-describedby="run-status" aria-busy="false">
+        <span class="btn-spinner" aria-hidden="true"></span>
+        <span id="run-report-label">Run collectors and generate</span>
+      </button>
+    </div>
   </div>
   <div id="run-status" class="run-status" role="status" aria-live="polite"></div>
 
@@ -633,7 +651,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     </ol>
     <h3>Release notes</h3>
     <ul>
-      <li>Preselected the AWS egress and Circuit review acknowledgements, clarified unavailable billing, and moved Cost beside Source window in every report export.</li>
+      <li>Added a visible report-generation spinner, preselected the AWS egress and Circuit review acknowledgements, clarified unavailable billing, and moved Cost beside Source window in every report export.</li>
       <li>Added Chrome and Firefox-compatible browser lifecycle tracking so closing the final report tab stops the local app, with a crash-safe heartbeat fallback and an explicit Quit app control.</li>
       <li>Replaced the two-stage macOS shell launcher and executable with one Finder-launchable app and a drag-to-Applications disk image.</li>
       <li>Added optional Developer ID signing and Apple notarization support for a normal one-click macOS launch.</li>
@@ -780,6 +798,14 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     var node = byId('run-status');
     node.textContent = message;
     node.className = 'run-status' + (type ? ' ' + type : '');
+  }
+
+  function setRunBusy(isBusy) {
+    var button = byId('run-report');
+    button.disabled = isBusy;
+    button.classList.toggle('is-loading', isBusy);
+    button.setAttribute('aria-busy', String(isBusy));
+    byId('run-report-label').textContent = isBusy ? 'Generating report…' : 'Run collectors and generate';
   }
 
   function isoDate(value) {
@@ -1141,9 +1167,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   }
 
   function runReport() {
-    var button = byId('run-report');
-    button.disabled = true;
-    status('Running local collectors. Bedrock may take up to two minutes.', '');
+    setRunBusy(true);
+    status('Generating report. Running local collectors; Bedrock may take up to two minutes.', '');
     fetch('/api/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1164,7 +1189,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
         byId('access-key').value = '';
         byId('secret-key').value = '';
         byId('session-token').value = '';
-        button.disabled = false;
+        setRunBusy(false);
       });
   }
 
