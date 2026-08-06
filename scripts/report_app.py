@@ -73,7 +73,7 @@ BUNDLED_BEDROCK_SCRIPT = SKILL_DIR / "scripts" / "bedrock_usage_check.py"
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
 DEFAULT_CIRCUIT_URL = "https://circuit.cisco.com/app/usage-dashboard"
-APP_VERSION = "1.3.5"
+APP_VERSION = "1.3.6"
 RELEASE_DATE = "2026-08-06"
 CLIENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
 CLIENT_CLOSE_GRACE_SECONDS = 3.0
@@ -747,10 +747,18 @@ def build_report(
         cir_usage = f"{format_integer(cir_data.get('tokens'))} tokens"
         if cir_data.get("comparison"):
             cir_usage += f"; {clean_cell(cir_data['comparison'])}"
-        cir_cost = f"{format_money(cir_data.get('approximate_cost'))} approximate/informational"
+        pasted_dashboard_cost = (
+            cir_data.get("method") == "parsed from user-copied dashboard text"
+            and cir_data.get("approximate_cost") not in (None, "")
+        )
+        cir_cost = (
+            f"{format_money(cir_data.get('approximate_cost'))} approximate/informational"
+            if pasted_dashboard_cost
+            else "No Billing available"
+        )
     else:
         cir_usage = source_problem(circuit)
-        cir_cost = "approximate/informational cost unavailable"
+        cir_cost = "No Billing available"
 
     codex_sentence = "Codex telemetry was unavailable."
     finding_lines: list[str] = []
@@ -798,7 +806,10 @@ def build_report(
         cross_charge = clean_cell((circuit.get("data") or {}).get("cross_charge") or "")
         if cross_charge:
             risk_lines.append(f"- **Circuit cross-charge statement:** {cross_charge}")
-    risk_lines.append("- **Billing boundary:** Local Codex telemetry does not represent complete ChatGPT subscription or billing usage.")
+    risk_lines.append(
+        "- **Billing boundary:** Codex reports **No Billing available** because local telemetry is not authoritative billing. "
+        "Circuit reports **No Billing available** unless approximate cost was extracted from user-pasted dashboard text."
+    )
 
     bed_window = f"{clean_cell(bedrock.get('window', 'rolling collector window')).capitalize()} ending {retrieved:%Y-%m-%d}; retrieved {retrieval_date(bedrock)}"
     cod_window = f"{period_label} exact local range; retrieved {retrieval_date(codex)}"
@@ -814,11 +825,11 @@ def build_report(
 
 {codex_sentence} **{verified_count} of 3 sources** supplied verified or explicitly inferred data. {action}
 
-| Platform | Source window | Usage | Cost |
+| Platform | Source window | Cost | Usage |
 |---|---|---|---|
-| Claude Code / AWS Bedrock | {bed_window} | {bed_usage} | {bed_cost} |
-| Codex / ChatGPT | {cod_window} | {cod_usage} | authoritative billing unavailable |
-| Circuit | {cir_window} | {cir_usage} | {cir_cost} |
+| Claude Code / AWS Bedrock | {bed_window} | {bed_cost} | {bed_usage} |
+| Codex / ChatGPT | {cod_window} | No Billing available | {cod_usage} |
+| Circuit | {cir_window} | {cir_cost} | {cir_usage} |
 
 ## Key trends and business impact
 
@@ -832,7 +843,7 @@ def build_report(
 
 **Subject: {period_label} AI usage — {verified_count} of 3 sources verified**
 
-{codex_sentence} Bedrock costs remain estimates, Circuit costs remain approximate/informational, and provider token units are not directly comparable.
+{codex_sentence} Codex has No Billing available. Circuit has No Billing available unless approximate cost was extracted from pasted dashboard text. Bedrock costs remain estimates, and provider token units are not directly comparable.
 
 {action}
 """

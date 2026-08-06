@@ -17,7 +17,7 @@ import zipfile
 from pathlib import Path
 
 
-APP_VERSION = "1.3.5"
+APP_VERSION = "1.3.6"
 APP_EXECUTABLE = "Monthly-AI-Usage-Report"
 MAC_APP_NAME = "Monthly AI Usage Report.app"
 MAC_BUNDLE_IDENTIFIER = "com.ericrennie.monthly-ai-usage-report"

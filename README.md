@@ -85,9 +85,9 @@ Configure these repository secrets to sign and notarize macOS releases:
 ## Bedrock setup
 
 The public build intentionally contains no default AWS Lambda Function URL.
-Enter a verified HTTPS AWS Lambda Function URL in the app and explicitly approve
-egress before collection. The included collector signs the request with temporary
-AWS credentials or a selected AWS profile.
+Enter a verified HTTPS AWS Lambda Function URL and review the preselected egress
+acknowledgement before collection. The included collector signs the request with
+temporary AWS credentials or a selected AWS profile.
 
 This URL is the HTTPS endpoint of the deployed usage-collector Lambda—not a
 Bedrock endpoint, function Amazon Resource Name (ARN), access key, or AWS sign-in
