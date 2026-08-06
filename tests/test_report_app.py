@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import subprocess
+import sys
 import threading
 import time
 import unittest
@@ -52,6 +54,71 @@ class BedrockFailureTests(unittest.TestCase):
         self.assertEqual(result["failure"]["category"], "certificate_verification_failed")
         self.assertNotIn("refresh", result["failure"]["remediation"].lower())
         self.assertIn("Do not disable TLS", result["failure"]["remediation"])
+
+
+class MacOSCredentialBridgeTests(unittest.TestCase):
+    def test_login_shell_reader_imports_only_allowlisted_variables(self) -> None:
+        output = (
+            "shell startup message\n"
+            f"{REPORT_APP.MACOS_SHELL_ENV_MARKER}\n"
+            "AWS_ACCESS_KEY_ID=test-access-key\n"
+            "AWS_SECRET_ACCESS_KEY=test-secret-key\n"
+            "AWS_REGION=us-east-1\n"
+            "UNRELATED_SECRET=must-not-be-imported\n"
+        )
+        completed = subprocess.CompletedProcess([sys.executable], 0, output, "")
+        with patch.object(REPORT_APP.subprocess, "run", return_value=completed) as run:
+            resolved = REPORT_APP._read_login_shell_aws_environment(
+                sys.executable,
+                {"HOME": "/Users/example", "AWS_ACCESS_KEY_ID": "stale"},
+            )
+
+        self.assertEqual(resolved["AWS_ACCESS_KEY_ID"], "test-access-key")
+        self.assertEqual(resolved["AWS_SECRET_ACCESS_KEY"], "test-secret-key")
+        self.assertEqual(resolved["AWS_REGION"], "us-east-1")
+        self.assertNotIn("UNRELATED_SECRET", resolved)
+        call_environment = run.call_args.kwargs["env"]
+        self.assertNotIn("AWS_ACCESS_KEY_ID", call_environment)
+
+    def test_automatic_collection_adds_native_macos_shell_credentials(self) -> None:
+        shell_values = {
+            "AWS_ACCESS_KEY_ID": "shell-access-key",
+            "AWS_SECRET_ACCESS_KEY": "shell-secret-key",
+            "AWS_REGION": "us-east-1",
+        }
+        with (
+            patch.dict(os.environ, {"HOME": "/Users/example"}, clear=True),
+            patch.object(
+                REPORT_APP,
+                "macos_login_shell_aws_environment",
+                return_value=shell_values,
+            ) as bridge,
+        ):
+            environment = REPORT_APP.bedrock_child_environment(
+                profile="", access_key="", secret_key="", session_token=""
+            )
+
+        bridge.assert_called_once()
+        self.assertEqual(environment["AWS_ACCESS_KEY_ID"], "shell-access-key")
+        self.assertEqual(environment["AWS_SECRET_ACCESS_KEY"], "shell-secret-key")
+
+    def test_manual_credentials_do_not_read_the_login_shell(self) -> None:
+        with (
+            patch.dict(os.environ, {"AWS_PROFILE": "stale-profile"}, clear=True),
+            patch.object(REPORT_APP, "macos_login_shell_aws_environment") as bridge,
+        ):
+            environment = REPORT_APP.bedrock_child_environment(
+                profile="",
+                access_key="manual-access-key",
+                secret_key="manual-secret-key",
+                session_token="manual-session-token",
+            )
+
+        bridge.assert_not_called()
+        self.assertNotIn("AWS_PROFILE", environment)
+        self.assertEqual(environment["AWS_ACCESS_KEY_ID"], "manual-access-key")
+        self.assertEqual(environment["AWS_SECRET_ACCESS_KEY"], "manual-secret-key")
+        self.assertEqual(environment["AWS_SESSION_TOKEN"], "manual-session-token")
 
 
 class ReportOutputTests(unittest.TestCase):

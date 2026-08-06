@@ -73,13 +73,26 @@ BUNDLED_BEDROCK_SCRIPT = SKILL_DIR / "scripts" / "bedrock_usage_check.py"
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
 DEFAULT_CIRCUIT_URL = "https://circuit.cisco.com/app/usage-dashboard"
-APP_VERSION = "1.3.6"
+APP_VERSION = "1.3.7"
 RELEASE_DATE = "2026-08-06"
 CLIENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
 CLIENT_CLOSE_GRACE_SECONDS = 3.0
 CLIENT_STALE_SECONDS = 600.0
 CLIENT_WATCH_INTERVAL_SECONDS = 15.0
 CLIENT_STREAM_INTERVAL_SECONDS = 1.0
+MACOS_SHELL_ENV_MARKER = "MONTHLY_AI_USAGE_REPORT_AWS_ENV_V1"
+MACOS_SHELL_ENV_KEYS = (
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "AWS_SECURITY_TOKEN",
+    "AWS_PROFILE",
+    "AWS_REGION",
+    "AWS_DEFAULT_REGION",
+    "AWS_CA_BUNDLE",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+)
 
 
 def python_script_command(script: Path, *arguments: str) -> list[str]:
@@ -98,6 +111,101 @@ def run_python_script_mode() -> None:
         raise SystemExit(f"Python script not found: {script}")
     sys.argv = [str(script), *sys.argv[3:]]
     runpy.run_path(str(script), run_name="__main__")
+
+
+def _macos_login_shell() -> str | None:
+    """Return the current macOS account's configured login shell."""
+    try:
+        import pwd
+
+        shell = pwd.getpwuid(os.getuid()).pw_shell
+    except (ImportError, KeyError, OSError):
+        shell = os.environ.get("SHELL", "/bin/zsh")
+    path = Path(shell)
+    if not path.is_absolute() or not path.is_file() or not os.access(path, os.X_OK):
+        return None
+    return str(path)
+
+
+def _read_login_shell_aws_environment(
+    shell: str, base_environment: dict[str, str], *, timeout: float = 8.0
+) -> dict[str, str]:
+    """Read only approved AWS/TLS variables after login-shell initialization."""
+    clean_environment = base_environment.copy()
+    for name in MACOS_SHELL_ENV_KEYS:
+        clean_environment.pop(name, None)
+    names = " ".join(MACOS_SHELL_ENV_KEYS)
+    command = (
+        f"printf '%s\\n' '{MACOS_SHELL_ENV_MARKER}'; "
+        f"for name in {names}; do "
+        "value=$(/usr/bin/printenv \"$name\") || continue; "
+        "/usr/bin/printf '%s=%s\\n' \"$name\" \"$value\"; "
+        "done"
+    )
+    try:
+        completed = subprocess.run(
+            [shell, "-lc", command],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=clean_environment,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return {}
+    if completed.returncode:
+        return {}
+    _, marker, payload = completed.stdout.partition(f"{MACOS_SHELL_ENV_MARKER}\n")
+    if not marker:
+        return {}
+    allowed = set(MACOS_SHELL_ENV_KEYS)
+    resolved: dict[str, str] = {}
+    for line in payload.splitlines():
+        name, separator, value = line.partition("=")
+        if separator and name in allowed and value:
+            resolved[name] = value
+    return resolved
+
+
+def macos_login_shell_aws_environment(base_environment: dict[str, str]) -> dict[str, str]:
+    """Bridge login-shell AWS variables into a Finder-launched native app."""
+    if sys.platform != "darwin" or not getattr(sys, "frozen", False):
+        return {}
+    if (
+        base_environment.get("AWS_PROFILE")
+        or (
+            base_environment.get("AWS_ACCESS_KEY_ID")
+            and base_environment.get("AWS_SECRET_ACCESS_KEY")
+        )
+    ):
+        return {}
+    shell = _macos_login_shell()
+    if shell is None:
+        return {}
+    return _read_login_shell_aws_environment(shell, base_environment)
+
+
+def bedrock_child_environment(
+    *, profile: str, access_key: str, secret_key: str, session_token: str
+) -> dict[str, str]:
+    """Build the one-run collector environment without persisting credentials."""
+    child_environment = os.environ.copy()
+    if not profile and not access_key:
+        child_environment.update(macos_login_shell_aws_environment(child_environment))
+    if access_key:
+        for key in (
+            "AWS_PROFILE",
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "AWS_SESSION_TOKEN",
+            "AWS_SECURITY_TOKEN",
+        ):
+            child_environment.pop(key, None)
+        child_environment["AWS_ACCESS_KEY_ID"] = access_key
+        child_environment["AWS_SECRET_ACCESS_KEY"] = secret_key
+        if session_token:
+            child_environment["AWS_SESSION_TOKEN"] = session_token
+    return child_environment
 
 
 def existing_app_version(port: int) -> str | None:
@@ -478,20 +586,12 @@ def collect_bedrock(
         except ValueError as exc:
             return failure("invalid_lambda_url", str(exc), "Enter a verified AWS Lambda Function URL.", retrieved)
 
-    child_env = os.environ.copy()
-    if access_key:
-        for key in (
-            "AWS_PROFILE",
-            "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY",
-            "AWS_SESSION_TOKEN",
-            "AWS_SECURITY_TOKEN",
-        ):
-            child_env.pop(key, None)
-        child_env["AWS_ACCESS_KEY_ID"] = access_key
-        child_env["AWS_SECRET_ACCESS_KEY"] = secret_key
-        if session_token:
-            child_env["AWS_SESSION_TOKEN"] = session_token
+    child_env = bedrock_child_environment(
+        profile=profile,
+        access_key=access_key,
+        secret_key=secret_key,
+        session_token=session_token,
+    )
 
     code, data, message = run_json_command(args, env=child_env)
     if code or data is None:
@@ -1161,6 +1261,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     if args.self_test:
+        shell_probe_environment = os.environ.copy()
+        for name in MACOS_SHELL_ENV_KEYS:
+            shell_probe_environment.pop(name, None)
+        shell_aws_environment = macos_login_shell_aws_environment(shell_probe_environment)
         command = python_script_command(
             CODEX_COLLECTOR,
             "--start-date",
@@ -1189,6 +1293,15 @@ def main() -> int:
                     "frozen": bool(getattr(sys, "frozen", False)),
                     "tls_trust_source": TLS_TRUST_SOURCE,
                     "tls_trust_error": TLS_TRUST_ERROR,
+                    "diagnostics": {
+                        "macos_login_shell_aws_available": bool(
+                            shell_aws_environment.get("AWS_PROFILE")
+                            or (
+                                shell_aws_environment.get("AWS_ACCESS_KEY_ID")
+                                and shell_aws_environment.get("AWS_SECRET_ACCESS_KEY")
+                            )
+                        )
+                    },
                     "checks": checks,
                     "message": "ok" if all(checks.values()) else message,
                 }

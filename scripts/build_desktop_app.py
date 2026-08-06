@@ -17,7 +17,7 @@ import zipfile
 from pathlib import Path
 
 
-APP_VERSION = "1.3.6"
+APP_VERSION = "1.3.7"
 APP_EXECUTABLE = "Monthly-AI-Usage-Report"
 MAC_APP_NAME = "Monthly AI Usage Report.app"
 MAC_BUNDLE_IDENTIFIER = "com.ericrennie.monthly-ai-usage-report"
@@ -72,6 +72,9 @@ default. If it is occupied, the app reopens the same version or selects another
 free local port and opens that exact address. The app is reachable only from
 this device.
 AWS credentials remain in memory for a single collector run and are not saved.
+When a native macOS app is opened from Finder, automatic resolution securely
+imports only the approved AWS and certificate variables initialized by the
+user's login shell for that collector run.
 HTTPS verification uses the certificate authorities trusted by macOS Keychain
 or Windows. Organization-managed root certificates therefore work without
 editing the app. Administrators may instead set SSL_CERT_FILE or AWS_CA_BUNDLE
