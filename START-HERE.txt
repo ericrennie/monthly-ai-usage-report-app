@@ -38,9 +38,10 @@ version is running, the launcher reopens its address. Otherwise, it selects a
 free local port and opens that exact address.
 Choose a daily, weekly, monthly, or custom reporting range and your timezone.
 Select a Bedrock collector script stored anywhere on this device, choose an AWS
-profile or enter temporary AWS credentials, and select the local Codex sessions
-folder. Open Circuit, copy the visible dashboard page text, then use the
-app to extract and verify month-to-date tokens and approximate cost. Generate the
+profile or enter temporary AWS credentials. The conventional local Codex
+sessions folder is detected automatically; choose another only when needed.
+Open Circuit, paste the visible dashboard page text, then use the app to
+extract and verify month-to-date tokens and approximate cost. Generate the
 report, review the formatted table, and export Markdown, Word-compatible .doc,
 or Print / Save PDF.
 

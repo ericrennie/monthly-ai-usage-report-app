@@ -88,7 +88,9 @@ your AWS identity access.
 
 - Credentials stay in process memory for one collector run and are not saved.
 - Local Codex telemetry is not authoritative ChatGPT subscription billing.
+- The conventional Codex sessions folder is detected automatically at runtime.
 - Circuit figures can be extracted from dashboard text the user explicitly
-  copies or pastes. Browser same-origin controls prevent silent cross-tab access.
+  pastes. Browser same-origin controls prevent silent cross-tab access, and
+  direct clipboard reading may be denied by browser privacy settings.
 - Provider token totals are not directly comparable units.
 - Word export is a Word-compatible `.doc`; use Print / Save PDF for a PDF copy.

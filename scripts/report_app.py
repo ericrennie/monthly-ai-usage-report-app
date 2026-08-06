@@ -52,7 +52,8 @@ DEFAULT_BEDROCK_SCRIPT = Path(
 )
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
-APP_VERSION = "1.2.2"
+DEFAULT_CIRCUIT_URL = "https://circuit.cisco.com/app/usage-dashboard"
+APP_VERSION = "1.3.0"
 RELEASE_DATE = "2026-08-05"
 
 
@@ -189,6 +190,18 @@ def validate_timezone(value: str) -> str:
 def resolve_local_path(value: str, default: Path) -> Path:
     path = Path(value or str(default)).expanduser()
     return path if path.is_absolute() else (SKILL_DIR / path).resolve()
+
+
+def codex_sessions_details() -> tuple[str, bool, int]:
+    """Return the conventional local Codex sessions path and discovery status."""
+    sessions = Path.home() / ".codex" / "sessions"
+    if not sessions.is_dir():
+        return str(sessions), False, 0
+    try:
+        count = sum(1 for path in sessions.rglob("*.jsonl") if path.is_file())
+    except OSError:
+        count = 0
+    return str(sessions), True, count
 
 
 def select_local_path(kind: str) -> str | None:
@@ -840,6 +853,7 @@ class ReportHandler(BaseHTTPRequestHandler):
                 if BUNDLED_BEDROCK_SCRIPT.is_file()
                 else "~/.bedrock/bedrock_usage_check.py"
             )
+            sessions_dir, sessions_found, sessions_count = codex_sessions_details()
             self.send_json(
                 HTTPStatus.OK,
                 {
@@ -851,8 +865,11 @@ class ReportHandler(BaseHTTPRequestHandler):
                     "bedrock_script_example": "~/tools/bedrock_usage_check.py",
                     "bedrock_lambda_url": configured_lambda_url(DEFAULT_BEDROCK_SCRIPT),
                     "aws_profiles": available_profiles(),
-                    "codex_sessions_dir": "~/.codex/sessions",
+                    "codex_sessions_dir": sessions_dir,
                     "codex_sessions_example": "~/.codex/sessions",
+                    "codex_sessions_found": sessions_found,
+                    "codex_session_files": sessions_count,
+                    "circuit_dashboard_url": DEFAULT_CIRCUIT_URL,
                     "version": APP_VERSION,
                     "release_date": RELEASE_DATE,
                 },

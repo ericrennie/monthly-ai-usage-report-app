@@ -464,9 +464,10 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
           <label for="sessions-dir">Codex sessions directory</label>
           <div class="path-row">
             <input id="sessions-dir" type="text" placeholder="Select or enter the local sessions folder">
-            <button class="btn btn-secondary" type="button" id="browse-codex">Select folder</button>
+            <button class="btn btn-secondary" type="button" id="browse-codex">Choose another folder</button>
           </div>
-          <span class="help">The folder can be anywhere. Typical examples: <code>~/.codex/sessions</code> on macOS/Linux or <code>C:\Users\your-name\.codex\sessions</code> on Windows. The collector scans JSONL rollouts and keeps reasoning tokens inside output totals.</span>
+          <div id="codex-detection-status" class="inline-status" role="status" aria-live="polite"></div>
+          <span class="help">The conventional folder is detected automatically. On macOS it is hidden; if you need to locate it manually, choose <strong>Go &gt; Go to Folder</strong> in Finder (Shift+Cmd+G), enter <code>~/.codex/sessions</code>, and press Return. The collector scans JSONL rollouts and keeps reasoning tokens inside output totals.</span>
         </div>
         <div class="field full security-note" style="margin:0;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
@@ -497,18 +498,18 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
             <input id="dashboard-url" type="text" placeholder="https://..." style="flex:1;min-width:16rem;">
             <button class="btn btn-secondary" type="button" id="open-circuit">Open dashboard</button>
           </div>
-          <span class="help">Open the dashboard and sign in normally. Browser security prevents this localhost app from reading another website directly, so copy the visible dashboard page text and let the app extract the month-to-date totals.</span>
+          <span class="help">The Circuit Usage Dashboard is preconfigured. Open it and sign in normally. Browser security prevents this localhost app from reading another website directly, so paste the visible dashboard text below or enter the figures manually.</span>
         </div>
 
         <div class="field full capture-panel">
-          <h3>Read month-to-date totals from copied dashboard text</h3>
-          <span class="help">On the dashboard, select the visible page text (Ctrl+A/Cmd+A) and copy it. Return here and choose <strong>Read copied dashboard text</strong>. You can also paste text below.</span>
+          <h3>Extract month-to-date totals from dashboard text</h3>
+          <span class="help">On the dashboard, select the visible page text (Ctrl+A/Cmd+A) and copy it. Click in the box below and paste (Ctrl+V/Cmd+V); extraction runs automatically. Direct clipboard reading is optional and may be blocked by browser privacy settings.</span>
           <div class="button-row">
-            <button class="btn btn-secondary" type="button" id="read-circuit-clipboard">Read copied dashboard text</button>
+            <button class="btn btn-quiet" type="button" id="read-circuit-clipboard">Try reading the clipboard</button>
           </div>
-          <textarea id="circuit-page-text" placeholder="Or paste the visible Circuit dashboard text here. Sensitive text is processed only in this browser tab and is not saved."></textarea>
+          <textarea id="circuit-page-text" placeholder="Click here and press Cmd+V (Mac) or Ctrl+V (Windows). Sensitive text is processed only in this browser tab and is not saved."></textarea>
           <div class="button-row">
-            <button class="btn btn-quiet" type="button" id="parse-circuit-text">Extract MTD tokens and cost</button>
+            <button class="btn btn-secondary" type="button" id="parse-circuit-text">Extract pasted MTD tokens and cost</button>
           </div>
           <div id="circuit-capture-status" class="inline-status" role="status" aria-live="polite"></div>
         </div>
@@ -616,7 +617,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     <button class="btn btn-header" type="button" id="close-about">Close</button>
   </div>
   <div class="about-body">
-    <div class="about-version"><span>Version <span id="about-version">1.2.2</span></span><span>Release date <span id="about-date">2026-08-05</span></span></div>
+    <div class="about-version"><span>Version <span id="about-version">1.3.0</span></span><span>Release date <span id="about-date">2026-08-05</span></span></div>
     <h3>How to use</h3>
     <ol>
       <li>Start the app with its launcher and use the browser address it opens. This running copy is at <code id="local-app-url">the current browser address</code>. Port 8765 is only the preferred default.</li>
@@ -627,6 +628,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     </ol>
     <h3>Release notes</h3>
     <ul>
+      <li>Added the Circuit Usage Dashboard default, paste-first automatic extraction, and automatic Codex sessions discovery.</li>
       <li>Corrected Help and setup instructions to show the running app's exact address and treat port 8765 only as the preferred default.</li>
       <li>Added exact macOS Gatekeeper first-launch instructions and automatic recovery when the default local port is already in use.</li>
       <li>Added self-contained macOS and Windows desktop builds; users do not install Python.</li>
@@ -645,7 +647,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
 
 <footer>
   Sources: personal Bedrock collector, local Codex session telemetry, and user-verified Circuit dashboard data. Generated locally; methodology: monthly-ai-usage-report skill.<br>
-  Version <span id="footer-version">1.2.2</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
+  Version <span id="footer-version">1.3.0</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
 </footer>
 
 <script>
@@ -765,8 +767,17 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
         byId('bedrock-script').value = data.bedrock_script || '';
         byId('lambda-url').value = data.bedrock_lambda_url || '';
         byId('sessions-dir').value = data.codex_sessions_dir || '';
-        byId('about-version').textContent = data.version || '1.2.2';
-        byId('footer-version').textContent = data.version || '1.2.2';
+        var codexStatus = byId('codex-detection-status');
+        if (data.codex_sessions_found) {
+          codexStatus.textContent = 'Detected automatically: ' + Number(data.codex_session_files || 0).toLocaleString() + ' local session file(s). No folder selection is required.';
+          codexStatus.className = 'inline-status success';
+        } else {
+          codexStatus.textContent = 'No conventional Codex sessions folder was detected. Use Choose another folder or the Finder Go to Folder instructions below.';
+          codexStatus.className = 'inline-status';
+        }
+        byId('dashboard-url').value = data.circuit_dashboard_url || '';
+        byId('about-version').textContent = data.version || '1.3.0';
+        byId('footer-version').textContent = data.version || '1.3.0';
         byId('about-date').textContent = data.release_date || '2026-08-05';
         var profile = byId('aws-profile');
         (data.aws_profiles || []).forEach(function (name) {
@@ -1114,7 +1125,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     var tokenMatch = matchDashboardValue(normalized, 'tokens?\\s*(?:used|usage)?', '[0-9][0-9,]*');
     var costMatch = matchDashboardValue(normalized, 'approximate\\s+cost', '\\$?\\s*[0-9][0-9,]*(?:\\.[0-9]{1,4})?');
     if (!tokenMatch && !costMatch) {
-      captureStatus('No month-to-date Tokens Used or Approximate Cost values were found. Paste the card text or enter the figures manually.', 'error');
+      captureStatus('No month-to-date Tokens Used or Approximate Cost values were found. The pasted text may contain only the page footer; copy the dashboard cards or enter the two figures manually.', 'error');
       return;
     }
     if (tokenMatch) byId('circuit-tokens').value = tokenMatch[1].replace(/[^0-9]/g, '');
@@ -1141,7 +1152,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
         parseCircuitDashboardText(text);
       })
       .catch(function () {
-        captureStatus('Clipboard permission was denied. Paste the dashboard text into the box instead.', 'error');
+        captureStatus('Direct clipboard reading is blocked by browser privacy. Click inside the box and press Cmd+V on Mac or Ctrl+V on Windows; extraction will run automatically.', '');
       });
   }
 
@@ -1197,6 +1208,12 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   byId('open-circuit').addEventListener('click', openCircuit);
   byId('read-circuit-clipboard').addEventListener('click', readCircuitClipboard);
   byId('parse-circuit-text').addEventListener('click', function () { parseCircuitDashboardText(byId('circuit-page-text').value); });
+  byId('circuit-page-text').addEventListener('input', function () {
+    if (byId('circuit-page-text').value.trim()) captureStatus('Dashboard text pasted. Extracting month-to-date totals…', '');
+  });
+  byId('circuit-page-text').addEventListener('paste', function () {
+    window.setTimeout(function () { parseCircuitDashboardText(byId('circuit-page-text').value); }, 0);
+  });
   byId('browse-bedrock').addEventListener('click', function () { selectPath('file', 'bedrock-script'); });
   byId('browse-codex').addEventListener('click', function () { selectPath('directory', 'sessions-dir'); });
   byId('open-about').addEventListener('click', openAbout);
