@@ -35,6 +35,8 @@ Start on Windows
 Use the app
 -----------
 Double-click the launcher and use the browser address it opens automatically.
+Do not open `assets/report_app.html` directly; direct-file mode is a preview and
+cannot detect paths, read the collector's Lambda URL, or run collectors.
 Do not type a saved localhost address: 127.0.0.1:8765 is only the preferred
 default, and the port may differ when it is already occupied. If the same app
 version is running, the launcher reopens its address. Otherwise, it selects a
@@ -44,10 +46,11 @@ The app automatically detects a Bedrock collector from BEDROCK_USAGE_SCRIPT,
 ~/.bedrock/bedrock_usage_check.py, or its bundled copy. It also detects the
 conventional local Codex sessions folder. Choose another path only when needed,
 then choose an AWS profile or enter temporary AWS credentials.
-Open Circuit, paste the visible dashboard page text, then use the app to
-extract and verify month-to-date tokens and approximate cost. Generate the
-report, review the formatted table, and export Markdown, Word-compatible .doc,
-or Print / Save PDF.
+Open Circuit and paste the visible dashboard page text. The app extracts
+month-to-date tokens and approximate cost automatically; verify the populated
+values before generating the report. Review the visual summary and formatted
+evidence table, then export
+Markdown, Word-compatible .doc, or Print / Save PDF.
 Close the final report tab to stop the local app after a short grace period, or
 choose Quit app for an immediate shutdown.
 

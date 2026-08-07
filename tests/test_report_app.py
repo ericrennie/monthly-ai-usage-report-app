@@ -205,6 +205,53 @@ class UiDefaultsTests(unittest.TestCase):
         self.assertIn("function setRunBusy(isBusy)", html)
         self.assertIn("isBusy ? 'Generating report…'", html)
 
+    def test_formatted_report_has_accessible_visual_summary(self) -> None:
+        html = (REPORT_APP.SKILL_DIR / "assets" / "report_app.html").read_text(encoding="utf-8")
+        self.assertIn("function buildVisualSummary(result)", html)
+        self.assertIn("insertVisualSummary(result, formattedOutput)", html)
+        self.assertIn("Usage at a glance", html)
+        self.assertIn("Token consumption by platform", html)
+        self.assertIn("Cost share by platform", html)
+        self.assertIn("function addDonutChart(card, items, options)", html)
+        self.assertIn("providers use different token accounting and source windows", html)
+        self.assertIn("Zero and unavailable costs remain visible as labeled pointers", html)
+        self.assertNotIn("Bedrock token composition", html)
+        self.assertNotIn("Bedrock model request mix", html)
+        self.assertNotIn("Codex token composition", html)
+        self.assertIn("No Billing available", html)
+        self.assertIn("role: 'img'", html)
+
+    def test_circuit_text_paste_is_the_only_extraction_control(self) -> None:
+        html = (REPORT_APP.SKILL_DIR / "assets" / "report_app.html").read_text(encoding="utf-8")
+        self.assertNotIn('id="read-circuit-clipboard"', html)
+        self.assertNotIn('id="parse-circuit-text"', html)
+        self.assertIn("the month-to-date token and cost fields fill automatically", html)
+        self.assertIn("circuitParseTimer = window.setTimeout", html)
+
+    def test_visual_summary_is_offline_responsive_and_printable(self) -> None:
+        html = (REPORT_APP.SKILL_DIR / "assets" / "report_app.html").read_text(encoding="utf-8")
+        self.assertNotIn("chart.js", html.lower())
+        self.assertIn(".visual-grid { display: grid", html)
+        self.assertIn(".visual-grid { grid-template-columns: 1fr; }", html)
+        self.assertIn(".visual-summary, .visual-card { break-inside: avoid", html)
+
+    def test_direct_html_preview_has_safe_nonsecret_defaults(self) -> None:
+        html = (REPORT_APP.SKILL_DIR / "assets" / "report_app.html").read_text(encoding="utf-8")
+        self.assertIn('value="~/.bedrock/bedrock_usage_check.py"', html)
+        self.assertIn('value="~/.codex/sessions"', html)
+        self.assertIn('value="https://circuit.cisco.com/app/usage-dashboard"', html)
+        self.assertIn('id="launch-mode-warning"', html)
+        self.assertIn("Preview only — launch the application to generate a report", html)
+        self.assertNotIn('id="lambda-url" type="text" value=', html)
+
+    def test_direct_html_preview_does_not_call_backend_actions(self) -> None:
+        html = (REPORT_APP.SKILL_DIR / "assets" / "report_app.html").read_text(encoding="utf-8")
+        self.assertIn("var localBackendCandidate = window.location.protocol === 'http:'", html)
+        self.assertIn("function enterPreviewMode(message)", html)
+        self.assertIn("if (!localBackendCandidate) return;", html)
+        self.assertIn("if (!localBackendCandidate) {\n      applyDefaults(fallbackDefaults(), true);", html)
+        self.assertIn("Launch the app to generate", html)
+
 
 class BrowserLifecycleTests(unittest.TestCase):
     def make_server(self, *, close_delay: float = 0.03) -> tuple[object, threading.Thread]:

@@ -73,8 +73,8 @@ BUNDLED_BEDROCK_SCRIPT = SKILL_DIR / "scripts" / "bedrock_usage_check.py"
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
 DEFAULT_CIRCUIT_URL = "https://circuit.cisco.com/app/usage-dashboard"
-APP_VERSION = "1.3.7"
-RELEASE_DATE = "2026-08-06"
+APP_VERSION = "1.3.8"
+RELEASE_DATE = "2026-08-07"
 CLIENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
 CLIENT_CLOSE_GRACE_SECONDS = 3.0
 CLIENT_STALE_SECONDS = 600.0
@@ -321,8 +321,19 @@ def validate_timezone(value: str) -> str:
 
 
 def resolve_local_path(value: str, default: Path) -> Path:
-    path = Path(value or str(default)).expanduser()
-    return path if path.is_absolute() else (SKILL_DIR / path).resolve()
+    raw = (value or str(default)).strip()
+    path = Path(raw).expanduser()
+    candidate = path.resolve() if path.is_absolute() else (SKILL_DIR / path).resolve()
+
+    allowed_roots = [SKILL_DIR.resolve(), Path.home().resolve()]
+    for root in allowed_roots:
+        try:
+            candidate.relative_to(root)
+            return candidate
+        except ValueError:
+            continue
+
+    raise ValueError(f"Path must be within {SKILL_DIR} or your home directory: {candidate}")
 
 
 def bedrock_script_details() -> tuple[Path, bool, str]:

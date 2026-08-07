@@ -7,6 +7,11 @@ or custom-range usage report from:
 - local Codex session telemetry
 - verified figures entered from a Circuit usage dashboard
 
+The formatted report includes a platform token-consumption pie chart, a cost-share
+pie chart with explicit zero and unavailable markers, clear source-window caveats,
+and the verified evidence table. Provider token totals remain directional because
+platforms account for context, caching, and reasoning differently.
+
 ## Run
 
 The platform-specific desktop ZIPs include a private Python runtime. Users do
@@ -49,7 +54,8 @@ Python 3.11 or newer is required; no runtime packages need to be installed.
 The launcher opens the correct local address in the default browser. The
 preferred address is `http://127.0.0.1:8765/`, but the port can differ when that
 address is occupied. Use the address opened by the launcher instead of typing a
-saved localhost URL. The app remains available only on the local computer. See
+saved localhost URL or opening `assets/report_app.html` directly. Direct-file
+mode is a preview and cannot run collectors. The app remains available only on the local computer. See
 `START-HERE.txt` for collection and security details. Closing the final report
 tab stops the local app after a short grace period; choose **Quit app** for an
 immediate shutdown. A heartbeat watchdog stops the app after a browser crash.

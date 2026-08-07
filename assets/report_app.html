@@ -104,6 +104,18 @@ main { width: min(72rem, calc(100% - 2rem)); margin: 0 auto; padding: 2rem 0 3re
 .security-note svg { color: var(--medium-blue); flex: 0 0 auto; margin-top: 0.18rem; }
 .security-note strong { color: var(--midnight); }
 .security-note p { color: var(--muted); font-size: 0.84rem; }
+.launch-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  background: var(--warning-bg);
+  border-left: 4px solid var(--orange);
+  border-radius: 0.5rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.5rem;
+}
+.launch-note strong { color: var(--midnight); }
+.launch-note p { color: var(--muted); font-size: 0.84rem; }
 
 .wizard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
 .card {
@@ -253,6 +265,37 @@ fieldset { border: 0; }
 .report-formatted ul { padding-left: 1.2rem; margin: 0.65rem 0; }
 .report-formatted li { color: var(--text); font-size: 0.84rem; line-height: 1.6; margin: 0.4rem 0; }
 .report-formatted strong { font-weight: 700; color: var(--midnight); }
+.visual-summary { margin: 1.5rem 0 1.8rem; }
+.visual-summary > h2 { margin-top: 0; }
+.visual-intro { color: var(--muted) !important; font-size: 0.78rem !important; margin-bottom: 0.9rem !important; }
+.visual-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
+.visual-card { min-width: 0; border: 1px solid var(--border); border-radius: 0.55rem; background: var(--card); padding: 0.95rem; break-inside: avoid; page-break-inside: avoid; }
+.visual-card-head { margin-bottom: 0.75rem; }
+.visual-card-title { color: var(--midnight); font-size: 0.86rem; font-weight: 700; line-height: 1.3; }
+.visual-card-subtitle { color: var(--muted); font-size: 0.67rem; line-height: 1.4; margin-top: 0.15rem; }
+.tone-midnight { background: var(--midnight); }
+.tone-sky { background: var(--hero-sky); }
+.tone-green { background: var(--accent-green); }
+.donut-chart-wrap { display: grid; place-items: center; }
+.donut-chart { width: min(100%, 23rem); height: auto; overflow: visible; }
+.donut-base, .donut-slice, .donut-zero-mark { fill: none; stroke-width: 24; }
+.donut-base { stroke: var(--border); }
+.donut-slice.tone-midnight, .donut-zero-mark.tone-midnight, .donut-pointer.tone-midnight { stroke: var(--midnight); }
+.donut-slice.tone-sky, .donut-zero-mark.tone-sky, .donut-pointer.tone-sky { stroke: var(--hero-sky); }
+.donut-slice.tone-green, .donut-zero-mark.tone-green, .donut-pointer.tone-green { stroke: var(--accent-green); }
+.donut-zero-mark { stroke-width: 5; stroke-linecap: round; }
+.donut-pointer { fill: none; stroke-width: 1.5; }
+.donut-callout { fill: var(--midnight); font-size: 14px; }
+.donut-callout-label { font-weight: 700; }
+.donut-callout-value { font-weight: 600; }
+.donut-center-label { fill: var(--muted); font-size: 12px; text-anchor: middle; text-transform: uppercase; }
+.donut-center-value { fill: var(--midnight); font-size: 19px; font-weight: 700; text-anchor: middle; }
+.chart-legend { list-style: none !important; display: grid; grid-template-columns: 1fr; gap: 0.42rem; padding: 0 !important; margin: 0.7rem 0 0 !important; }
+.chart-legend li { display: grid; grid-template-columns: 0.7rem minmax(0, 1fr) auto; align-items: center; gap: 0.4rem; margin: 0 !important; font-size: 0.68rem !important; line-height: 1.35 !important; }
+.legend-marker { width: 0.62rem; height: 0.62rem; border-radius: 0.16rem; }
+.legend-label { color: var(--muted); overflow-wrap: anywhere; }
+.legend-value { color: var(--midnight); font-weight: 700; font-variant-numeric: tabular-nums; }
+.visual-note { color: var(--muted); font-size: 0.65rem; line-height: 1.4; margin-top: 0.65rem; }
 .report-table-wrap { width: 100%; overflow-x: auto; margin: 1rem 0 1.4rem; border: 1px solid var(--border); border-radius: 0.55rem; }
 table.report-table { width: 100%; min-width: 60rem; table-layout: fixed; border-collapse: collapse; }
 table.report-table th { background: var(--midnight); color: var(--card); padding: 0.8rem 0.9rem; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -292,6 +335,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
 
 @media (max-width: 820px) {
   .wizard-grid, .source-grid { grid-template-columns: 1fr; }
+  .visual-grid { grid-template-columns: 1fr; }
   .card.full { grid-column: auto; }
   .header-inner, .action-bar { align-items: flex-start; }
   .action-bar { flex-direction: column; }
@@ -310,12 +354,14 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
 }
 @media print {
   body { background: var(--card); }
-  .app-header, .hero, .security-note, .wizard-grid, .action-bar, .result-tools, footer, dialog { display: none; }
+  .app-header, .hero, .security-note, .launch-note, .wizard-grid, .action-bar, .result-tools, footer, dialog { display: none; }
   main, .results { width: 100%; margin: 0; padding: 0; }
   .report-formatted { padding: 0; border: 0; box-shadow: none; }
   .report-markdown { display: none !important; }
   .report-table-wrap { overflow: visible; }
   table.report-table { min-width: 0; }
+  .visual-summary, .visual-card { break-inside: avoid; page-break-inside: avoid; }
+  .visual-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>
 </head>
@@ -348,6 +394,16 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     <div>
       <strong>Local and ephemeral by design</strong>
       <p>The app binds to 127.0.0.1. Temporary AWS credentials stay in process memory for one collector run and are never saved, logged, or placed in browser storage. Prefer an AWS profile or single sign-on whenever available.</p>
+    </div>
+  </div>
+
+  <div id="launch-mode-warning" class="launch-note hidden" role="alert">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+      <path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.6 2.4 17.3A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.7L13.7 3.6a2 2 0 0 0-3.4 0Z"></path>
+    </svg>
+    <div>
+      <strong>Preview only — launch the application to generate a report</strong>
+      <p id="launch-mode-message">This HTML file was opened directly. Portable example paths and the Circuit dashboard address are shown below, but automatic detection, file pickers, Lambda URL discovery, and collectors require the local application. Open <strong>Monthly AI Usage Report</strong> and use the 127.0.0.1 address it opens.</p>
     </div>
   </div>
 
@@ -404,10 +460,10 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
         <div class="field full">
           <label for="bedrock-script">Collector script</label>
           <div class="path-row">
-            <input id="bedrock-script" type="text" placeholder="Select or enter the local collector path">
+            <input id="bedrock-script" type="text" value="~/.bedrock/bedrock_usage_check.py" placeholder="Select or enter the local collector path">
             <button class="btn btn-secondary" type="button" id="browse-bedrock">Choose another file</button>
           </div>
-          <div id="bedrock-detection-status" class="inline-status" aria-live="polite"></div>
+          <div id="bedrock-detection-status" class="inline-status" aria-live="polite">Typical path shown until the local application checks this computer.</div>
           <span class="help">The app checks <code>BEDROCK_USAGE_SCRIPT</code>, <code>~/.bedrock/bedrock_usage_check.py</code>, and its bundled collector automatically. Choose another file only when your collector is elsewhere. Example: <code>~/tools/bedrock_usage_check.py</code> on macOS/Linux or <code>C:\Users\your-name\Tools\bedrock_usage_check.py</code> on Windows.</span>
         </div>
         <fieldset class="field full">
@@ -441,7 +497,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
         <div class="field full">
           <label for="lambda-url">Usage collector Lambda Function URL</label>
           <input id="lambda-url" type="text" spellcheck="false" placeholder="https://abcde12345.lambda-url.us-east-1.on.aws/">
-          <div id="lambda-detection-status" class="inline-status" aria-live="polite"></div>
+          <div id="lambda-detection-status" class="inline-status" aria-live="polite">Launch the local application to read the configured URL from the detected collector.</div>
           <span class="help">At startup, the app automatically populates this field when the detected collector contains a configured <code>DEFAULT_LAMBDA_URL</code>. It does not search your AWS account. Verify the displayed URL before approving egress. This is not a Bedrock model endpoint, AWS sign-in page, function Amazon Resource Name (ARN), or access key.</span>
           <details class="help-details">
             <summary>What is this URL, and where do I find it?</summary>
@@ -479,10 +535,10 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
         <div class="field full">
           <label for="sessions-dir">Codex sessions directory</label>
           <div class="path-row">
-            <input id="sessions-dir" type="text" placeholder="Select or enter the local sessions folder">
+            <input id="sessions-dir" type="text" value="~/.codex/sessions" placeholder="Select or enter the local sessions folder">
             <button class="btn btn-secondary" type="button" id="browse-codex">Choose another folder</button>
           </div>
-          <div id="codex-detection-status" class="inline-status" role="status" aria-live="polite"></div>
+          <div id="codex-detection-status" class="inline-status" role="status" aria-live="polite">Typical path shown until the local application checks this computer.</div>
           <span class="help">The conventional folder is detected automatically. On macOS it is hidden; if you need to locate it manually, choose <strong>Go &gt; Go to Folder</strong> in Finder (Shift+Cmd+G), enter <code>~/.codex/sessions</code>, and press Return. The collector scans JSONL rollouts and keeps reasoning tokens inside output totals.</span>
         </div>
         <div class="field full security-note" style="margin:0;">
@@ -511,7 +567,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
         <div class="field full">
           <label for="dashboard-url">Circuit Usage Dashboard URL</label>
           <div class="button-row">
-            <input id="dashboard-url" type="text" placeholder="https://..." style="flex:1;min-width:16rem;">
+            <input id="dashboard-url" type="text" value="https://circuit.cisco.com/app/usage-dashboard" placeholder="https://..." style="flex:1;min-width:16rem;">
             <button class="btn btn-secondary" type="button" id="open-circuit">Open dashboard</button>
           </div>
           <span class="help">The Circuit Usage Dashboard is preconfigured. Open it and sign in normally. Browser security prevents this localhost app from reading another website directly, so paste the visible dashboard text below or enter the figures manually.</span>
@@ -520,14 +576,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
 
         <div class="field full capture-panel">
           <h3>Extract month-to-date totals from dashboard text</h3>
-          <span class="help">On the dashboard, select the visible page text (Ctrl+A/Cmd+A) and copy it. Click in the box below and paste (Ctrl+V/Cmd+V); extraction runs automatically. Direct clipboard reading is optional and may be blocked by browser privacy settings.</span>
-          <div class="button-row">
-            <button class="btn btn-quiet" type="button" id="read-circuit-clipboard">Try reading the clipboard</button>
-          </div>
+          <span class="help">On the dashboard, select the visible page text (Ctrl+A/Cmd+A) and copy it. Paste it below (Ctrl+V/Cmd+V); the month-to-date token and cost fields fill automatically.</span>
           <textarea id="circuit-page-text" placeholder="Click here and press Cmd+V (Mac) or Ctrl+V (Windows). Sensitive text is processed only in this browser tab and is not saved."></textarea>
-          <div class="button-row">
-            <button class="btn btn-secondary" type="button" id="parse-circuit-text">Extract pasted MTD tokens and cost</button>
-          </div>
           <div id="circuit-capture-status" class="inline-status" role="status" aria-live="polite"></div>
         </div>
 
@@ -639,18 +689,21 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     <button class="btn btn-header" type="button" id="close-about">Close</button>
   </div>
   <div class="about-body">
-    <div class="about-version"><span>Version <span id="about-version">1.3.7</span></span><span>Release date <span id="about-date">2026-08-06</span></span></div>
+    <div class="about-version"><span>Version <span id="about-version">1.3.8</span></span><span>Release date <span id="about-date">2026-08-07</span></span></div>
     <h3>How to use</h3>
     <ol>
       <li>Start the app and use the browser address it opens. This running copy is at <code id="local-app-url">the current browser address</code>. Port 8765 is only the preferred default.</li>
       <li>Choose a preset reporting period or exact start and end dates, then select your timezone.</li>
       <li>Confirm the automatically detected Bedrock collector and Codex sessions folder. Choose another path only when needed, and use an AWS profile when possible.</li>
-      <li>Open Circuit, copy the visible dashboard page text, extract the month-to-date totals, and verify them.</li>
+      <li>Open Circuit, copy the visible dashboard page text, paste it into the app, and verify the month-to-date totals filled automatically.</li>
       <li>Generate the report, review every source caveat, then export Markdown, Word-compatible format, or PDF.</li>
       <li>Close the final report tab to stop the local app automatically, or choose <strong>Quit app</strong> for an immediate shutdown.</li>
     </ol>
     <h3>Release notes</h3>
     <ul>
+      <li>Directly opened HTML now shows safe example paths, the Circuit dashboard URL, and a clear preview-only notice instead of blank fields or misleading backend errors.</li>
+      <li>Simplified the visual summary to one cross-platform token-consumption chart and one cost-share chart, with labeled pointers for zero or unavailable costs and full detail retained in the table.</li>
+      <li>Removed the optional clipboard-reading and manual extraction buttons; pasting Circuit dashboard text now triggers extraction automatically.</li>
       <li>Fixed Finder-launched macOS apps so Automatic credential resolution securely imports only approved AWS and certificate variables from the user's login shell for the collector run.</li>
       <li>Added a visible report-generation spinner, preselected the AWS egress and Circuit review acknowledgements, clarified unavailable billing, and moved Cost beside Source window in every report export.</li>
       <li>Added Chrome and Firefox-compatible browser lifecycle tracking so closing the final report tab stops the local app, with a crash-safe heartbeat fallback and an explicit Quit app control.</li>
@@ -680,7 +733,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
 
 <footer>
   Sources: personal Bedrock collector, local Codex session telemetry, and user-verified Circuit dashboard data. Generated locally; methodology: monthly-ai-usage-report skill.<br>
-  Version <span id="footer-version">1.3.7</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
+  Version <span id="footer-version">1.3.8</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
 </footer>
 
 <script>
@@ -691,6 +744,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   var defaultPreviousStart = '';
   var defaultPreviousEnd = '';
   var circuitCaptureMethod = 'direct dashboard entry';
+  var circuitParseTimer = null;
   var lifecycleClientId = 'browser-' + (
     window.crypto && window.crypto.randomUUID
       ? window.crypto.randomUUID()
@@ -699,6 +753,9 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   var lifecycleHeartbeat = null;
   var lifecycleStreamController = null;
   var lifecycleClosing = false;
+  var localBackendCandidate = window.location.protocol === 'http:' &&
+    (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost');
+  var backendReady = false;
 
   function byId(id) { return document.getElementById(id); }
   function selected(name) {
@@ -745,6 +802,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   }
 
   function startLifecycle() {
+    if (!localBackendCandidate) return;
     lifecyclePost('/api/client/open').catch(function () {});
     openLifecycleStream();
     lifecycleHeartbeat = window.setInterval(function () {
@@ -753,6 +811,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   }
 
   function closeLifecycle() {
+    if (!localBackendCandidate) return;
     if (lifecycleClosing) return;
     lifecycleClosing = true;
     if (lifecycleHeartbeat !== null) window.clearInterval(lifecycleHeartbeat);
@@ -766,6 +825,10 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   }
 
   function quitApp() {
+    if (!backendReady) {
+      status('Preview mode cannot stop or start the local application. Launch Monthly AI Usage Report normally.', 'error');
+      return;
+    }
     if (!window.confirm('Quit Monthly AI Usage Report and stop its local server?')) return;
     lifecycleClosing = true;
     if (lifecycleHeartbeat !== null) window.clearInterval(lifecycleHeartbeat);
@@ -857,85 +920,170 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     byId('timezone-manual-wrap').classList.toggle('hidden', byId('timezone-select').value !== '__manual__');
   }
 
+  function browserTimezoneName() {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }
+    catch (_error) { return ''; }
+  }
+
+  function fallbackDefaults() {
+    var today = new Date();
+    var firstThisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    var previousEnd = new Date(firstThisMonth.getTime());
+    previousEnd.setDate(previousEnd.getDate() - 1);
+    var previousStart = new Date(previousEnd.getFullYear(), previousEnd.getMonth(), 1);
+    var browserTimezone = browserTimezoneName() || 'UTC';
+    var timezones = [browserTimezone, 'UTC', 'America/Chicago', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Asia/Tokyo']
+      .filter(function (name, index, values) { return values.indexOf(name) === index; })
+      .sort();
+    return {
+      start_date: isoDate(previousStart),
+      end_date: isoDate(previousEnd),
+      timezone: browserTimezone,
+      timezones: timezones,
+      bedrock_script: '~/.bedrock/bedrock_usage_check.py',
+      bedrock_script_found: false,
+      bedrock_script_source: 'preview',
+      bedrock_lambda_url: '',
+      aws_profiles: [],
+      codex_sessions_dir: '~/.codex/sessions',
+      codex_sessions_found: false,
+      codex_session_files: 0,
+      circuit_dashboard_url: 'https://circuit.cisco.com/app/usage-dashboard',
+      version: '1.3.8',
+      release_date: '2026-08-07'
+    };
+  }
+
+  function applyDefaults(data, previewMode) {
+    defaultPreviousStart = data.start_date || '';
+    defaultPreviousEnd = data.end_date || '';
+    byId('start-date').value = defaultPreviousStart;
+    byId('end-date').value = defaultPreviousEnd;
+    var timezoneSelect = byId('timezone-select');
+    timezoneSelect.replaceChildren();
+    var browserTimezone = browserTimezoneName();
+    var preferredTimezone = browserTimezone || data.timezone || 'UTC';
+    (data.timezones || []).forEach(function (name) {
+      var option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      timezoneSelect.appendChild(option);
+    });
+    var manualOption = document.createElement('option');
+    manualOption.value = '__manual__';
+    manualOption.textContent = 'Enter another timezone...';
+    timezoneSelect.appendChild(manualOption);
+    if ((data.timezones || []).indexOf(preferredTimezone) !== -1) {
+      timezoneSelect.value = preferredTimezone;
+    } else {
+      timezoneSelect.value = '__manual__';
+      byId('timezone-manual').value = preferredTimezone;
+    }
+    updateTimezoneMode();
+
+    byId('bedrock-script').value = data.bedrock_script || '~/.bedrock/bedrock_usage_check.py';
+    var bedrockStatus = byId('bedrock-detection-status');
+    if (previewMode) {
+      bedrockStatus.textContent = 'Typical path shown. Launch the local application to detect the actual collector on this computer.';
+      bedrockStatus.className = 'inline-status';
+    } else if (data.bedrock_script_found) {
+      var bedrockSource = {
+        environment: 'the BEDROCK_USAGE_SCRIPT environment setting',
+        conventional: 'the conventional ~/.bedrock folder',
+        bundled: 'the collector bundled with this app'
+      }[data.bedrock_script_source] || 'a local path';
+      bedrockStatus.textContent = 'Detected automatically from ' + bedrockSource + '. No file selection is required.';
+      bedrockStatus.className = 'inline-status success';
+    } else {
+      bedrockStatus.textContent = data.bedrock_script_source === 'environment_missing'
+        ? 'BEDROCK_USAGE_SCRIPT points to a file that was not found. Choose the collector file below.'
+        : 'No Bedrock collector was detected. Choose the collector file below.';
+      bedrockStatus.className = 'inline-status';
+    }
+
+    byId('lambda-url').value = data.bedrock_lambda_url || '';
+    var lambdaStatus = byId('lambda-detection-status');
+    if (data.bedrock_lambda_url) {
+      lambdaStatus.textContent = 'Populated automatically at startup from the detected collector. Verify this URL before approving egress.';
+      lambdaStatus.className = 'inline-status success';
+    } else if (previewMode) {
+      lambdaStatus.textContent = 'Launch the local application to read this URL from the detected collector, or enter a verified Function URL manually.';
+      lambdaStatus.className = 'inline-status';
+    } else {
+      lambdaStatus.textContent = 'The detected collector has no configured Lambda URL. Enter the verified Function URL supplied by the collector owner.';
+      lambdaStatus.className = 'inline-status';
+    }
+
+    byId('sessions-dir').value = data.codex_sessions_dir || '~/.codex/sessions';
+    var codexStatus = byId('codex-detection-status');
+    if (previewMode) {
+      codexStatus.textContent = 'Typical path shown. Launch the local application to detect and verify the sessions folder on this computer.';
+      codexStatus.className = 'inline-status';
+    } else if (data.codex_sessions_found) {
+      codexStatus.textContent = 'Detected automatically: ' + Number(data.codex_session_files || 0).toLocaleString() + ' local session file(s). No folder selection is required.';
+      codexStatus.className = 'inline-status success';
+    } else {
+      codexStatus.textContent = 'No conventional Codex sessions folder was detected. Use Choose another folder or the Finder Go to Folder instructions below.';
+      codexStatus.className = 'inline-status';
+    }
+
+    byId('dashboard-url').value = data.circuit_dashboard_url || 'https://circuit.cisco.com/app/usage-dashboard';
+    byId('about-version').textContent = data.version || '1.3.8';
+    byId('footer-version').textContent = data.version || '1.3.8';
+    byId('about-date').textContent = data.release_date || '2026-08-07';
+    var profile = byId('aws-profile');
+    profile.replaceChildren();
+    var automatic = document.createElement('option');
+    automatic.value = '';
+    automatic.textContent = 'Automatic credential resolution';
+    profile.appendChild(automatic);
+    (data.aws_profiles || []).forEach(function (name) {
+      var option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      profile.appendChild(option);
+    });
+  }
+
+  function enterPreviewMode(message) {
+    backendReady = false;
+    byId('launch-mode-warning').classList.remove('hidden');
+    if (message) byId('launch-mode-message').textContent = message;
+    byId('run-report').disabled = true;
+    byId('run-report').setAttribute('aria-disabled', 'true');
+    byId('run-report-label').textContent = 'Launch the app to generate';
+    byId('browse-bedrock').disabled = true;
+    byId('browse-codex').disabled = true;
+    byId('quit-app').disabled = true;
+    status('Preview-only mode: open Monthly AI Usage Report and use the 127.0.0.1 address it launches.', '');
+  }
+
   function loadDefaults() {
+    if (!localBackendCandidate) {
+      applyDefaults(fallbackDefaults(), true);
+      enterPreviewMode();
+      return;
+    }
     fetch('/api/defaults', { cache: 'no-store' })
       .then(function (response) {
         if (!response.ok) throw new Error('Could not load local defaults.');
         return response.json();
       })
       .then(function (data) {
-        defaultPreviousStart = data.start_date || '';
-        defaultPreviousEnd = data.end_date || '';
-        byId('start-date').value = defaultPreviousStart;
-        byId('end-date').value = defaultPreviousEnd;
-        var timezoneSelect = byId('timezone-select');
-        var browserTimezone = '';
-        try { browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (_error) { browserTimezone = ''; }
-        var preferredTimezone = browserTimezone || data.timezone || 'UTC';
-        (data.timezones || []).forEach(function (name) {
-          var option = document.createElement('option');
-          option.value = name;
-          option.textContent = name;
-          timezoneSelect.appendChild(option);
-        });
-        var manualOption = document.createElement('option');
-        manualOption.value = '__manual__';
-        manualOption.textContent = 'Enter another timezone...';
-        timezoneSelect.appendChild(manualOption);
-        if ((data.timezones || []).indexOf(preferredTimezone) !== -1) {
-          timezoneSelect.value = preferredTimezone;
-        } else {
-          timezoneSelect.value = '__manual__';
-          byId('timezone-manual').value = preferredTimezone;
-        }
-        updateTimezoneMode();
-        byId('bedrock-script').value = data.bedrock_script || '';
-        var bedrockStatus = byId('bedrock-detection-status');
-        if (data.bedrock_script_found) {
-          var bedrockSource = {
-            environment: 'the BEDROCK_USAGE_SCRIPT environment setting',
-            conventional: 'the conventional ~/.bedrock folder',
-            bundled: 'the collector bundled with this app'
-          }[data.bedrock_script_source] || 'a local path';
-          bedrockStatus.textContent = 'Detected automatically from ' + bedrockSource + '. No file selection is required.';
-          bedrockStatus.className = 'inline-status success';
-        } else {
-          bedrockStatus.textContent = data.bedrock_script_source === 'environment_missing'
-            ? 'BEDROCK_USAGE_SCRIPT points to a file that was not found. Choose the collector file below.'
-            : 'No Bedrock collector was detected. Choose the collector file below.';
-          bedrockStatus.className = 'inline-status';
-        }
-        byId('lambda-url').value = data.bedrock_lambda_url || '';
-        var lambdaStatus = byId('lambda-detection-status');
-        if (data.bedrock_lambda_url) {
-          lambdaStatus.textContent = 'Populated automatically at startup from the detected collector. Verify this URL before approving egress.';
-          lambdaStatus.className = 'inline-status success';
-        } else {
-          lambdaStatus.textContent = 'The detected collector has no configured Lambda URL. Enter the verified Function URL supplied by the collector owner.';
-          lambdaStatus.className = 'inline-status';
-        }
-        byId('sessions-dir').value = data.codex_sessions_dir || '';
-        var codexStatus = byId('codex-detection-status');
-        if (data.codex_sessions_found) {
-          codexStatus.textContent = 'Detected automatically: ' + Number(data.codex_session_files || 0).toLocaleString() + ' local session file(s). No folder selection is required.';
-          codexStatus.className = 'inline-status success';
-        } else {
-          codexStatus.textContent = 'No conventional Codex sessions folder was detected. Use Choose another folder or the Finder Go to Folder instructions below.';
-          codexStatus.className = 'inline-status';
-        }
-        byId('dashboard-url').value = data.circuit_dashboard_url || '';
-        byId('about-version').textContent = data.version || '1.3.7';
-        byId('footer-version').textContent = data.version || '1.3.7';
-        byId('about-date').textContent = data.release_date || '2026-08-06';
-        var profile = byId('aws-profile');
-        (data.aws_profiles || []).forEach(function (name) {
-          var option = document.createElement('option');
-          option.value = name;
-          option.textContent = name;
-          profile.appendChild(option);
-        });
+        backendReady = true;
+        applyDefaults(data, false);
+        byId('launch-mode-warning').classList.add('hidden');
+        byId('run-report').disabled = false;
+        byId('run-report').removeAttribute('aria-disabled');
+        byId('run-report-label').textContent = 'Run collectors and generate';
+        byId('browse-bedrock').disabled = false;
+        byId('browse-codex').disabled = false;
+        byId('quit-app').disabled = false;
       })
-      .catch(function (error) { status(error.message, 'error'); });
+      .catch(function () {
+        applyDefaults(fallbackDefaults(), true);
+        enterPreviewMode('The local application backend could not be reached. Close this tab, start Monthly AI Usage Report, and use the 127.0.0.1 address it opens. Portable example paths and the Circuit dashboard address are shown below.');
+      });
   }
 
   function payload() {
@@ -995,6 +1143,272 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     card.appendChild(state);
     card.appendChild(detail);
     return card;
+  }
+
+  function usableSource(source) {
+    return Boolean(source && (source.status === 'verified' || source.status === 'inference'));
+  }
+
+  function numericValue(value) {
+    var parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  }
+
+  function exactNumber(value) {
+    return Math.round(numericValue(value)).toLocaleString();
+  }
+
+  function compactNumber(value) {
+    var number = numericValue(value);
+    var scales = [
+      { size: 1000000000, suffix: 'B' },
+      { size: 1000000, suffix: 'M' },
+      { size: 1000, suffix: 'K' }
+    ];
+    for (var index = 0; index < scales.length; index += 1) {
+      if (number >= scales[index].size) {
+        var scaled = number / scales[index].size;
+        return scaled.toLocaleString(undefined, {
+          minimumFractionDigits: scaled < 10 ? 1 : 0,
+          maximumFractionDigits: scaled < 10 ? 1 : 0
+        }) + scales[index].suffix;
+      }
+    }
+    return exactNumber(number);
+  }
+
+  function moneyValue(value) {
+    if (value === null || value === undefined || String(value).trim() === '') return null;
+    var number = Number(value);
+    if (!Number.isFinite(number) || number < 0) return null;
+    return '$' + number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function visualCard(title, subtitle) {
+    var card = document.createElement('section');
+    card.className = 'visual-card';
+    var head = document.createElement('div');
+    head.className = 'visual-card-head';
+    var titleNode = document.createElement('div');
+    titleNode.className = 'visual-card-title';
+    titleNode.setAttribute('role', 'heading');
+    titleNode.setAttribute('aria-level', '3');
+    titleNode.textContent = title;
+    var subtitleNode = document.createElement('div');
+    subtitleNode.className = 'visual-card-subtitle';
+    subtitleNode.textContent = subtitle;
+    head.appendChild(titleNode);
+    head.appendChild(subtitleNode);
+    card.appendChild(head);
+    return card;
+  }
+
+  function addVisualNote(card, text) {
+    if (!text) return;
+    var note = document.createElement('div');
+    note.className = 'visual-note';
+    note.textContent = text;
+    card.appendChild(note);
+  }
+
+  function optionalNumber(value) {
+    if (value === null || value === undefined || String(value).trim() === '') return null;
+    var number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? number : null;
+  }
+
+  function svgNode(name, attributes) {
+    var node = document.createElementNS('http://www.w3.org/2000/svg', name);
+    Object.keys(attributes || {}).forEach(function (key) { node.setAttribute(key, attributes[key]); });
+    return node;
+  }
+
+  function polarPoint(centerX, centerY, radius, angleDegrees) {
+    var angle = (angleDegrees - 90) * Math.PI / 180;
+    return {
+      x: centerX + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle)
+    };
+  }
+
+  function addDonutChart(card, items, options) {
+    var total = items.reduce(function (sum, item) {
+      return sum + (item.available ? numericValue(item.value) : 0);
+    }, 0);
+    var wrap = document.createElement('div');
+    wrap.className = 'donut-chart-wrap';
+    var svg = svgNode('svg', {
+      class: 'donut-chart',
+      viewBox: '0 0 360 224',
+      role: 'img',
+      'aria-label': items.map(function (item) {
+        return item.label + ': ' + options.formatItem(item, total);
+      }).join('; ')
+    });
+    var centerX = 105;
+    var centerY = 112;
+    var radius = 67;
+    svg.appendChild(svgNode('circle', { class: 'donut-base', cx: centerX, cy: centerY, r: radius }));
+
+    var offset = 0;
+    items.forEach(function (item) {
+      var value = item.available ? numericValue(item.value) : 0;
+      if (!value || !total) return;
+      var percentage = value / total * 100;
+      var slice = svgNode('circle', {
+        class: 'donut-slice ' + item.tone,
+        cx: centerX,
+        cy: centerY,
+        r: radius,
+        pathLength: '100',
+        'stroke-dasharray': percentage + ' ' + (100 - percentage),
+        'stroke-dashoffset': String(-offset),
+        transform: 'rotate(-90 ' + centerX + ' ' + centerY + ')'
+      });
+      var title = svgNode('title');
+      title.textContent = item.label + ': ' + options.formatItem(item, total);
+      slice.appendChild(title);
+      svg.appendChild(slice);
+      offset += percentage;
+    });
+
+    var pointerItems = items.filter(function (item) {
+      return !item.available || numericValue(item.value) === 0;
+    });
+    pointerItems.forEach(function (item, index) {
+      var calloutY = 53 + index * 55;
+      var angle = 48 + index * 34;
+      var inner = polarPoint(centerX, centerY, radius - 13, angle);
+      var outer = polarPoint(centerX, centerY, radius + 13, angle);
+      svg.appendChild(svgNode('line', {
+        class: 'donut-zero-mark ' + item.tone,
+        x1: inner.x.toFixed(1),
+        y1: inner.y.toFixed(1),
+        x2: outer.x.toFixed(1),
+        y2: outer.y.toFixed(1)
+      }));
+      svg.appendChild(svgNode('polyline', {
+        class: 'donut-pointer ' + item.tone,
+        points: outer.x.toFixed(1) + ',' + outer.y.toFixed(1) + ' 196,' + calloutY + ' 207,' + calloutY
+      }));
+      var callout = svgNode('text', { class: 'donut-callout', x: '213', y: String(calloutY - 4) });
+      var calloutLabel = svgNode('tspan', { class: 'donut-callout-label', x: '213' });
+      calloutLabel.textContent = item.pointerLabel || item.label;
+      var calloutValue = svgNode('tspan', { class: 'donut-callout-value', x: '213', dy: '15' });
+      calloutValue.textContent = options.pointerText(item);
+      callout.appendChild(calloutLabel);
+      callout.appendChild(calloutValue);
+      svg.appendChild(callout);
+    });
+
+    var centerLabel = svgNode('text', { class: 'donut-center-label', x: centerX, y: centerY - 5 });
+    centerLabel.textContent = options.centerLabel;
+    svg.appendChild(centerLabel);
+    var centerValue = svgNode('text', { class: 'donut-center-value', x: centerX, y: centerY + 17 });
+    centerValue.textContent = options.formatTotal(total);
+    svg.appendChild(centerValue);
+    wrap.appendChild(svg);
+    card.appendChild(wrap);
+
+    var legend = document.createElement('ul');
+    legend.className = 'chart-legend';
+    items.forEach(function (item) {
+      var listItem = document.createElement('li');
+      var marker = document.createElement('span');
+      marker.className = 'legend-marker ' + item.tone;
+      marker.setAttribute('aria-hidden', 'true');
+      var label = document.createElement('span');
+      label.className = 'legend-label';
+      label.textContent = item.label;
+      var value = document.createElement('span');
+      value.className = 'legend-value';
+      value.textContent = options.formatItem(item, total);
+      listItem.appendChild(marker);
+      listItem.appendChild(label);
+      listItem.appendChild(value);
+      legend.appendChild(listItem);
+    });
+    card.appendChild(legend);
+    addVisualNote(card, options.note);
+  }
+
+  function buildVisualSummary(result) {
+    var sources = result.sources || {};
+    var bedrock = sources.bedrock || {};
+    var codex = sources.codex || {};
+    var circuit = sources.circuit || {};
+    var bedrockData = usableSource(bedrock) ? (bedrock.data || {}) : {};
+    var bedrockSummary = bedrockData.summary || {};
+    var codexData = usableSource(codex) ? (codex.data || {}) : {};
+    var codexUsage = codexData.usage || {};
+    var circuitData = usableSource(circuit) ? (circuit.data || {}) : {};
+    var bedrockTokens = numericValue(bedrockSummary.input_tokens) + numericValue(bedrockSummary.output_tokens);
+    var codexTokens = numericValue(codexUsage.total_tokens);
+    var circuitTokens = numericValue(circuitData.tokens);
+    var bedrockCost = usableSource(bedrock) ? optionalNumber(bedrockSummary.total_cost) : null;
+    var circuitCost = usableSource(circuit) && circuitData.method === 'parsed from user-copied dashboard text'
+      ? optionalNumber(circuitData.approximate_cost)
+      : null;
+
+    var section = document.createElement('section');
+    section.className = 'visual-summary';
+    section.setAttribute('aria-labelledby', 'visual-summary-title');
+    var heading = document.createElement('h2');
+    heading.id = 'visual-summary-title';
+    heading.textContent = 'Usage at a glance';
+    var intro = document.createElement('p');
+    intro.className = 'visual-intro';
+    intro.textContent = 'Two charts show reported token and cost share. Detailed metrics and source windows remain in the table below.';
+    section.appendChild(heading);
+    section.appendChild(intro);
+
+    var visualGrid = document.createElement('div');
+    visualGrid.className = 'visual-grid';
+    var tokenCard = visualCard('Token consumption by platform', 'Share of reported tokens across the three sources');
+    addDonutChart(tokenCard, [
+      { label: 'Claude Code / AWS Bedrock', pointerLabel: 'Bedrock', value: bedrockTokens, available: usableSource(bedrock), tone: 'tone-midnight' },
+      { label: 'Codex', pointerLabel: 'Codex', value: codexTokens, available: usableSource(codex), tone: 'tone-sky' },
+      { label: 'Circuit', pointerLabel: 'Circuit', value: circuitTokens, available: usableSource(circuit), tone: 'tone-green' }
+    ], {
+      centerLabel: 'Reported total',
+      formatTotal: compactNumber,
+      formatItem: function (item, total) {
+        if (!item.available) return 'Unavailable';
+        var share = total ? (numericValue(item.value) / total * 100).toFixed(1) + '%' : '0.0%';
+        return compactNumber(item.value) + ' · ' + share;
+      },
+      pointerText: function (item) { return item.available ? '0 tokens' : 'Unavailable'; },
+      note: 'Directional comparison only: providers use different token accounting and source windows. See the table below for detail.'
+    });
+    visualGrid.appendChild(tokenCard);
+
+    var costCard = visualCard('Cost share by platform', 'Share of available estimated or approximate cost');
+    addDonutChart(costCard, [
+      { label: 'Claude Code / AWS Bedrock', pointerLabel: 'Bedrock', value: bedrockCost || 0, available: bedrockCost !== null, tone: 'tone-midnight', qualifier: 'estimated' },
+      { label: 'Codex', pointerLabel: 'Codex', value: 0, available: false, tone: 'tone-sky' },
+      { label: 'Circuit', pointerLabel: 'Circuit', value: circuitCost || 0, available: circuitCost !== null, tone: 'tone-green', qualifier: 'approximate' }
+    ], {
+      centerLabel: 'Available cost',
+      formatTotal: function (value) { return moneyValue(value) || '$0.00'; },
+      formatItem: function (item, total) {
+        if (!item.available) return 'No Billing available';
+        var share = total ? (numericValue(item.value) / total * 100).toFixed(1) + '%' : '0.0%';
+        return (moneyValue(item.value) || '$0.00') + ' ' + item.qualifier + ' · ' + share;
+      },
+      pointerText: function (item) {
+        return item.available ? (moneyValue(item.value) || '$0.00') : 'No Billing available';
+      },
+      note: 'Percentages use only available costs. Zero and unavailable costs remain visible as labeled pointers; Circuit requires pasted dashboard text.'
+    });
+    visualGrid.appendChild(costCard);
+    section.appendChild(visualGrid);
+    return section;
+  }
+
+  function insertVisualSummary(result, target) {
+    var summary = buildVisualSummary(result);
+    var firstReportSection = target.querySelector('h2');
+    target.insertBefore(summary, firstReportSection || null);
   }
 
   function appendInline(parent, value) {
@@ -1154,7 +1568,9 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     latestReport = result.report || '';
     latestPeriod = result.download_slug || 'report';
     byId('report-output').textContent = latestReport;
-    renderMarkdown(latestReport, byId('formatted-output'));
+    var formattedOutput = byId('formatted-output');
+    renderMarkdown(latestReport, formattedOutput);
+    insertVisualSummary(result, formattedOutput);
     setReportView('formatted');
     byId('word-count').textContent = (result.word_count || 0) + ' words; target under 500.';
     var grid = byId('source-grid');
@@ -1168,6 +1584,10 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   }
 
   function runReport() {
+    if (!backendReady) {
+      status('Launch Monthly AI Usage Report and use the 127.0.0.1 address it opens before generating a report.', 'error');
+      return;
+    }
     setRunBusy(true);
     status('Generating report. Running local collectors; Bedrock may take up to two minutes.', '');
     fetch('/api/run', {
@@ -1220,6 +1640,10 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     var styles = '<style>' +
       'body{font-family:Arial,sans-serif;color:#1B2A3D;font-size:11pt;line-height:1.45;margin:36pt}' +
       'h1,h2,h3,strong{color:#0D274D}h1{font-size:22pt}h2{font-size:15pt;border-bottom:2px solid #00BCEB;padding-bottom:5pt}' +
+      '.visual-summary{margin:14pt 0}.visual-intro,.visual-card-subtitle,.visual-note,.legend-label{color:#6B7F94}' +
+      '.visual-card{border:1px solid #DDE3EA;padding:8pt;margin:6pt 0}.visual-card-title{font-size:11pt;font-weight:bold;color:#0D274D}' +
+      '.donut-chart{width:260pt;height:auto}.donut-base{fill:none;stroke:#DDE3EA;stroke-width:24}.donut-slice{fill:none;stroke-width:24}.donut-zero-mark{fill:none;stroke-width:5}.donut-pointer{fill:none;stroke-width:1.5}.donut-slice.tone-midnight,.donut-zero-mark.tone-midnight,.donut-pointer.tone-midnight{stroke:#0D274D}.donut-slice.tone-sky,.donut-zero-mark.tone-sky,.donut-pointer.tone-sky{stroke:#00BCEB}.donut-slice.tone-green,.donut-zero-mark.tone-green,.donut-pointer.tone-green{stroke:#74BF4B}.donut-callout{fill:#0D274D;font-size:14px}.donut-callout-label,.donut-center-value{font-weight:bold}.donut-center-label{fill:#6B7F94}' +
+      '.tone-midnight{background:#0D274D}.tone-sky{background:#00BCEB}.tone-green{background:#74BF4B}.chart-legend{list-style:none;padding-left:0}.chart-legend li{margin:4pt 0}.legend-marker{display:inline-block;width:7pt;height:7pt;margin-right:3pt}.legend-value{font-weight:bold;color:#0D274D}' +
       'table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12pt 0}th{background:#0D274D;color:#fff;text-align:left}' +
       'th,td{border:1px solid #DDE3EA;padding:7pt;vertical-align:top;overflow-wrap:anywhere}th:nth-child(1){width:17%}th:nth-child(2){width:25%}th:nth-child(3){width:18%}th:nth-child(4){width:40%}' +
       'li,p{font-size:10pt}.report-table-wrap{width:100%}' +
@@ -1309,22 +1733,11 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     }
   }
 
-  function readCircuitClipboard() {
-    if (!navigator.clipboard || !navigator.clipboard.readText) {
-      captureStatus('Clipboard reading is unavailable in this browser. Paste the dashboard text into the box instead.', 'error');
+  function selectPath(kind, targetId) {
+    if (!backendReady) {
+      status('File and folder detection require the local application. Launch it and use the 127.0.0.1 address it opens.', 'error');
       return;
     }
-    navigator.clipboard.readText()
-      .then(function (text) {
-        byId('circuit-page-text').value = text;
-        parseCircuitDashboardText(text);
-      })
-      .catch(function () {
-        captureStatus('Direct clipboard reading is blocked by browser privacy. Click inside the box and press Cmd+V on Mac or Ctrl+V on Windows; extraction will run automatically.', '');
-      });
-  }
-
-  function selectPath(kind, targetId) {
     var button = kind === 'file' ? byId('browse-bedrock') : byId('browse-codex');
     button.disabled = true;
     fetch('/api/select-path', {
@@ -1390,13 +1803,15 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   byId('download-word').addEventListener('click', downloadWord);
   byId('print-report').addEventListener('click', printReport);
   byId('open-circuit').addEventListener('click', openCircuit);
-  byId('read-circuit-clipboard').addEventListener('click', readCircuitClipboard);
-  byId('parse-circuit-text').addEventListener('click', function () { parseCircuitDashboardText(byId('circuit-page-text').value); });
   byId('circuit-page-text').addEventListener('input', function () {
-    if (byId('circuit-page-text').value.trim()) captureStatus('Dashboard text pasted. Extracting month-to-date totals…', '');
-  });
-  byId('circuit-page-text').addEventListener('paste', function () {
-    window.setTimeout(function () { parseCircuitDashboardText(byId('circuit-page-text').value); }, 0);
+    window.clearTimeout(circuitParseTimer);
+    var value = byId('circuit-page-text').value;
+    if (!value.trim()) {
+      captureStatus('', '');
+      return;
+    }
+    captureStatus('Dashboard text pasted. Extracting month-to-date totals…', '');
+    circuitParseTimer = window.setTimeout(function () { parseCircuitDashboardText(value); }, 150);
   });
   byId('browse-bedrock').addEventListener('click', function () { selectPath('file', 'bedrock-script'); });
   byId('browse-codex').addEventListener('click', function () { selectPath('directory', 'sessions-dir'); });
@@ -1407,7 +1822,9 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   byId('view-markdown').addEventListener('click', function () { setReportView('markdown'); });
   updateCredentialMode();
   updateCircuitMode();
-  byId('local-app-url').textContent = window.location.origin + '/';
+  byId('local-app-url').textContent = localBackendCandidate
+    ? window.location.origin + '/'
+    : 'preview only — start the app to receive a local 127.0.0.1 address';
   window.addEventListener('pagehide', closeLifecycle);
   startLifecycle();
   loadDefaults();
