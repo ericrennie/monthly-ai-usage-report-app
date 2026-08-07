@@ -21,6 +21,7 @@ class MacPackagingTests(unittest.TestCase):
         metadata = BUILDER.macos_info_plist()
         self.assertEqual(metadata["CFBundleExecutable"], BUILDER.APP_EXECUTABLE)
         self.assertEqual(metadata["CFBundleIdentifier"], BUILDER.MAC_BUNDLE_IDENTIFIER)
+        self.assertEqual(metadata["CFBundleDisplayName"], "AI Usage Report")
         self.assertEqual(metadata["CFBundleShortVersionString"], BUILDER.APP_VERSION)
 
     def test_app_bundle_replaces_two_stage_shell_launcher(self) -> None:
@@ -33,7 +34,7 @@ class MacPackagingTests(unittest.TestCase):
             with patch.object(BUILDER, "run_checked") as run_checked:
                 app, target = BUILDER.create_macos_app(executable, release)
 
-            self.assertEqual(app.name, "Monthly AI Usage Report.app")
+            self.assertEqual(app.name, "AI Usage Report.app")
             self.assertEqual(target, app / "Contents" / "MacOS" / BUILDER.APP_EXECUTABLE)
             self.assertTrue(target.is_file())
             self.assertFalse((release / "START-MAC.command").exists())
@@ -43,7 +44,7 @@ class MacPackagingTests(unittest.TestCase):
             self.assertEqual(run_checked.call_count, 2)
 
     def test_desktop_instructions_name_only_the_app(self) -> None:
-        self.assertIn("single Monthly AI Usage Report app", BUILDER.DESKTOP_START_HERE)
+        self.assertIn("single AI Usage Report app", BUILDER.DESKTOP_START_HERE)
         self.assertIn("Quit app", BUILDER.DESKTOP_START_HERE)
         self.assertNotIn("START-MAC.command", BUILDER.DESKTOP_START_HERE)
 

@@ -1,4 +1,4 @@
-# Monthly AI Usage Report App
+# AI Usage Report
 
 A local, dependency-free browser app for generating a daily, weekly, monthly,
 or custom-range usage report from:
@@ -7,10 +7,10 @@ or custom-range usage report from:
 - local Codex session telemetry
 - verified figures entered from a Circuit usage dashboard
 
-The formatted report includes a platform token-consumption pie chart, a cost-share
-pie chart with explicit zero and unavailable markers, clear source-window caveats,
-and the verified evidence table. Provider token totals remain directional because
-platforms account for context, caching, and reasoning differently.
+The formatted report includes labeled platform token bars, a cost-share donut
+with explicit zero and unavailable markers, clear source-window caveats, and the
+verified evidence table. Provider token totals remain directional because platforms
+account for context, caching, and reasoning differently.
 
 ## Run
 
@@ -21,7 +21,7 @@ not install Python, need administrator access, or alter system Python.
 
 1. Download the DMG matching your Mac, or the ZIP matching Windows x64. A
    macOS ZIP containing the same app is also available as a fallback.
-2. On macOS, open the DMG, drag **Monthly AI Usage Report** to Applications,
+2. On macOS, open the DMG, drag **AI Usage Report** to Applications,
    and open the single app. The ZIP is a fallback containing the same app.
 3. On Windows, extract the ZIP and double-click `START-WINDOWS.bat`.
 
@@ -31,11 +31,11 @@ organization's software approval policy; do not bypass endpoint protections.
 ### First launch on macOS
 
 Developer ID-signed and Apple-notarized releases open normally. If a development
-release is unsigned and macOS says it cannot verify **Monthly AI Usage Report**:
+release is unsigned and macOS says it cannot verify **AI Usage Report**:
 
 1. Click **Done**.
 2. Open **System Settings > Privacy & Security** and scroll to **Security**.
-3. Click **Open Anyway** beside **Monthly AI Usage Report** within about one hour of the
+3. Click **Open Anyway** beside **AI Usage Report** within about one hour of the
    blocked launch, authenticate, and confirm **Open**.
 4. Open the app again. There is no shell launcher and no second executable approval.
 

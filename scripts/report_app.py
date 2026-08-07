@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the Monthly AI Usage Report guided setup app on localhost.
+"""Run the AI Usage Report guided setup app on localhost.
 
 The server uses only the Python standard library, binds to loopback, never logs
 request bodies, and does not persist AWS credentials or generated reports.
@@ -73,7 +73,7 @@ BUNDLED_BEDROCK_SCRIPT = SKILL_DIR / "scripts" / "bedrock_usage_check.py"
 MAX_REQUEST_BYTES = 256_000
 LAMBDA_HOST = re.compile(r"^[a-z0-9]+\.lambda-url\.[a-z0-9-]+\.on\.aws$")
 DEFAULT_CIRCUIT_URL = "https://circuit.cisco.com/app/usage-dashboard"
-APP_VERSION = "1.3.8"
+APP_VERSION = "1.4.1"
 RELEASE_DATE = "2026-08-07"
 CLIENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
 CLIENT_CLOSE_GRACE_SECONDS = 3.0
@@ -216,7 +216,8 @@ def existing_app_version(port: int) -> str | None:
     try:
         with urlopen(request, timeout=1) as response:  # noqa: S310 -- fixed loopback URL
             server = response.headers.get("Server", "")
-            if response.status != HTTPStatus.OK or not server.startswith("MonthlyAIUsageReport/"):
+            supported_products = ("AIUsageReport/", "MonthlyAIUsageReport/")
+            if response.status != HTTPStatus.OK or not server.startswith(supported_products):
                 return None
     except OSError:
         return None
@@ -543,6 +544,23 @@ def bedrock_failure(message: str, retrieved: str) -> dict[str, Any]:
     return failure("collector_error", message, "Review the collector output and AWS configuration.", retrieved)
 
 
+def bedrock_token_usage(data: dict[str, Any]) -> dict[str, int]:
+    """Reconcile the collector's separate direct, cache, and output token fields."""
+    summary = data.get("summary") or {}
+    models = data.get("models") or []
+    direct_input = max(0, int(summary.get("input_tokens") or 0))
+    cache_read = sum(max(0, int(item.get("cache_read_tokens") or 0)) for item in models)
+    cache_write = sum(max(0, int(item.get("cache_write_tokens") or 0)) for item in models)
+    output = max(0, int(summary.get("output_tokens") or 0))
+    return {
+        "direct_input_tokens": direct_input,
+        "cache_read_tokens": cache_read,
+        "cache_write_tokens": cache_write,
+        "output_tokens": output,
+        "total_tokens": direct_input + cache_read + cache_write + output,
+    }
+
+
 def collect_bedrock(
     config: dict[str, Any], timezone: ZoneInfo, period: dict[str, Any]
 ) -> dict[str, Any]:
@@ -607,6 +625,7 @@ def collect_bedrock(
     code, data, message = run_json_command(args, env=child_env)
     if code or data is None:
         return bedrock_failure(message, retrieved)
+    data["reported_token_usage"] = bedrock_token_usage(data)
     return {
         "status": "verified",
         "source": "personal Bedrock usage collector",
@@ -817,19 +836,18 @@ def build_report(
         bed_data = bedrock.get("data") or {}
         summary = bed_data.get("summary") or {}
         models = bed_data.get("models") or []
-        cache_read = sum(int(item.get("cache_read_tokens") or 0) for item in models)
-        cache_write = sum(int(item.get("cache_write_tokens") or 0) for item in models)
-        direct_input = max(0, int(summary.get("input_tokens") or 0) - cache_read - cache_write)
+        token_usage = bed_data.get("reported_token_usage") or bedrock_token_usage(bed_data)
         mix = ", ".join(
             f"{clean_cell(item.get('model', 'unknown'))} ({format_integer(item.get('api_calls'))} requests)"
             for item in models[:4]
         ) or "model mix unavailable"
         bed_usage = (
             f"{format_integer(summary.get('api_calls'))} requests; "
-            f"{format_integer(direct_input)} direct input; "
-            f"{format_integer(cache_read)} cache read; "
-            f"{format_integer(cache_write)} cache write; "
-            f"{format_integer(summary.get('output_tokens'))} output; {mix}"
+            f"{format_integer(token_usage.get('direct_input_tokens'))} direct input; "
+            f"{format_integer(token_usage.get('cache_read_tokens'))} cache read; "
+            f"{format_integer(token_usage.get('cache_write_tokens'))} cache write; "
+            f"{format_integer(token_usage.get('output_tokens'))} output; "
+            f"{format_integer(token_usage.get('total_tokens'))} total; {mix}"
         )
         bed_cost = f"{format_money(summary.get('total_cost'))} estimated"
     else:
@@ -1097,7 +1115,7 @@ class ReportServer(ThreadingHTTPServer):
 
 
 class ReportHandler(BaseHTTPRequestHandler):
-    server_version = f"MonthlyAIUsageReport/{APP_VERSION}"
+    server_version = f"AIUsageReport/{APP_VERSION}"
 
     def log_message(self, _format: str, *_args: Any) -> None:
         return
@@ -1262,7 +1280,7 @@ class ReportHandler(BaseHTTPRequestHandler):
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run the Monthly AI Usage Report setup wizard.")
+    parser = argparse.ArgumentParser(description="Run the AI Usage Report setup wizard.")
     parser.add_argument("--port", type=int, default=8765, help="Loopback port (default: 8765; use 0 for automatic).")
     parser.add_argument("--no-browser", action="store_true", help="Do not open the browser automatically.")
     parser.add_argument("--self-test", action="store_true", help=argparse.SUPPRESS)
@@ -1331,7 +1349,7 @@ def main() -> int:
         running_version = existing_app_version(args.port)
         existing_url = f"http://127.0.0.1:{args.port}/"
         if running_version == APP_VERSION:
-            print(f"Monthly AI Usage Report {APP_VERSION} is already running: {existing_url}")
+            print(f"AI Usage Report {APP_VERSION} is already running: {existing_url}")
             if not args.no_browser:
                 webbrowser.open(existing_url)
             return 0
@@ -1342,14 +1360,14 @@ def main() -> int:
             return 2
         if running_version:
             print(
-                f"Port {args.port} is used by Monthly AI Usage Report {running_version}; "
+                f"Port {args.port} is used by AI Usage Report {running_version}; "
                 f"starting {APP_VERSION} on an available port."
             )
         else:
             print(f"Port {args.port} is used by another process; starting on an available port.")
 
     url = f"http://127.0.0.1:{server.server_port}/"
-    print(f"Monthly AI Usage Report app: {url}")
+    print(f"AI Usage Report app: {url}")
     print("Credentials stay in memory for the current request. Press Ctrl+C to stop.")
     if not args.no_browser:
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a self-contained Monthly AI Usage Report desktop package."""
+"""Build a self-contained AI Usage Report desktop package."""
 
 from __future__ import annotations
 
@@ -17,11 +17,11 @@ import zipfile
 from pathlib import Path
 
 
-APP_VERSION = "1.3.8"
-APP_EXECUTABLE = "Monthly-AI-Usage-Report"
-MAC_APP_NAME = "Monthly AI Usage Report.app"
+APP_VERSION = "1.4.1"
+APP_EXECUTABLE = "AI-Usage-Report"
+MAC_APP_NAME = "AI Usage Report.app"
 MAC_BUNDLE_IDENTIFIER = "com.ericrennie.monthly-ai-usage-report"
-PACKAGE_FOLDER = "Monthly-AI-Usage-Report-App"
+PACKAGE_FOLDER = "AI-Usage-Report-App"
 SOURCE_ROOT = Path(__file__).resolve().parent.parent
 REQUIRED_PATHS = (
     Path("assets/report_app.html"),
@@ -37,15 +37,15 @@ cd /d "%~dp0"
 "{APP_EXECUTABLE}.exe"
 """
 
-DESKTOP_START_HERE = """MONTHLY AI USAGE REPORT — DESKTOP APP
+DESKTOP_START_HERE = """AI USAGE REPORT — DESKTOP APP
 
 No Python installation is required. This package includes a private Python
 runtime used only by the app; it does not install or change system Python.
 
 macOS
 -----
-1. From the DMG, drag Monthly AI Usage Report to Applications, then open it.
-   From the ZIP, open the single Monthly AI Usage Report app directly.
+1. From the DMG, drag AI Usage Report to Applications, then open it.
+   From the ZIP, open the single AI Usage Report app directly.
 2. A Developer ID-signed and Apple-notarized release opens normally. An
    unsigned development release still requires one macOS approval for the app,
    but no shell launcher or second executable approval.
@@ -158,11 +158,11 @@ def macos_info_plist() -> dict[str, object]:
     """Return metadata for the single macOS application bundle."""
     return {
         "CFBundleDevelopmentRegion": "en",
-        "CFBundleDisplayName": "Monthly AI Usage Report",
+        "CFBundleDisplayName": "AI Usage Report",
         "CFBundleExecutable": APP_EXECUTABLE,
         "CFBundleIdentifier": MAC_BUNDLE_IDENTIFIER,
         "CFBundleInfoDictionaryVersion": "6.0",
-        "CFBundleName": "Monthly AI Usage Report",
+        "CFBundleName": "AI Usage Report",
         "CFBundlePackageType": "APPL",
         "CFBundleShortVersionString": APP_VERSION,
         "CFBundleVersion": APP_VERSION,
@@ -209,7 +209,7 @@ def create_macos_app(executable: Path, release_dir: Path) -> tuple[Path, Path]:
 
 def create_macos_dmg(app: Path, output_dir: Path, tag: str) -> Path:
     """Create a drag-to-Applications disk image and optionally notarize it."""
-    dmg = output_dir / f"monthly-ai-usage-report-app-v{APP_VERSION}-{tag}.dmg"
+    dmg = output_dir / f"ai-usage-report-v{APP_VERSION}-{tag}.dmg"
     if dmg.exists():
         dmg.unlink()
     with tempfile.TemporaryDirectory(prefix="monthly-ai-dmg-") as staging_name:
@@ -221,7 +221,7 @@ def create_macos_dmg(app: Path, output_dir: Path, tag: str) -> Path:
                 "hdiutil",
                 "create",
                 "-volname",
-                "Monthly AI Usage Report",
+                "AI Usage Report",
                 "-srcfolder",
                 str(staging),
                 "-ov",
@@ -256,7 +256,7 @@ def notarize_macos_app(app: Path) -> None:
     if not os.environ.get("MACOS_CODESIGN_IDENTITY", "").strip():
         raise RuntimeError("MACOS_NOTARY_KEYCHAIN_PROFILE requires MACOS_CODESIGN_IDENTITY.")
     with tempfile.TemporaryDirectory(prefix="monthly-ai-notary-") as temporary_name:
-        submission = Path(temporary_name) / "Monthly-AI-Usage-Report.zip"
+        submission = Path(temporary_name) / "AI-Usage-Report.zip"
         run_checked(["ditto", "-c", "-k", "--keepParent", str(app), str(submission)])
         run_checked(
             [
@@ -304,7 +304,7 @@ def build(output_dir: Path) -> tuple[Path, Path, Path | None]:
     output_dir.mkdir(parents=True, exist_ok=True)
     tag = platform_tag()
     release_dir = output_dir / f"{PACKAGE_FOLDER}-{tag}"
-    archive = output_dir / f"monthly-ai-usage-report-app-v{APP_VERSION}-{tag}.zip"
+    archive = output_dir / f"ai-usage-report-v{APP_VERSION}-{tag}.zip"
     if release_dir.exists():
         shutil.rmtree(release_dir)
     release_dir.mkdir()

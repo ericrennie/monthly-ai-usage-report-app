@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monthly AI Usage Report</title>
+<title>AI Usage Report</title>
 <style>
 :root {
   --midnight: #0D274D;
@@ -270,12 +270,30 @@ fieldset { border: 0; }
 .visual-intro { color: var(--muted) !important; font-size: 0.78rem !important; margin-bottom: 0.9rem !important; }
 .visual-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
 .visual-card { min-width: 0; border: 1px solid var(--border); border-radius: 0.55rem; background: var(--card); padding: 0.95rem; break-inside: avoid; page-break-inside: avoid; }
+.export-chart-wrap { width: 100%; }
+.export-source-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.export-chart-image { display: block; width: 100%; height: auto; border: 0; }
+.print-chart-image { display: none; }
 .visual-card-head { margin-bottom: 0.75rem; }
 .visual-card-title { color: var(--midnight); font-size: 0.86rem; font-weight: 700; line-height: 1.3; }
 .visual-card-subtitle { color: var(--muted); font-size: 0.67rem; line-height: 1.4; margin-top: 0.15rem; }
 .tone-midnight { background: var(--midnight); }
 .tone-sky { background: var(--hero-sky); }
 .tone-green { background: var(--accent-green); }
+.platform-total { display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem; padding: 0.65rem 0.75rem; margin-bottom: 0.75rem; border-radius: 0.45rem; background: var(--input-bg); }
+.platform-total-label { color: var(--muted); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.platform-total-value { color: var(--midnight); font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.platform-bar-chart { display: grid; gap: 0.8rem; }
+.platform-bar-row { display: grid; gap: 0.3rem; }
+.platform-bar-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 0.65rem; }
+.platform-bar-label { color: var(--muted); font-size: 0.7rem; font-weight: 600; }
+.platform-bar-value { color: var(--midnight); font-size: 0.7rem; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.platform-bar-track { position: relative; height: 0.8rem; overflow: visible; border-radius: 999px; background: var(--border); }
+.platform-bar-fill { height: 100%; min-width: 0; border-radius: inherit; }
+.platform-bar-marker { position: absolute; top: 50%; left: 0; width: 0.55rem; height: 0.55rem; border: 2px solid var(--card); border-radius: 50%; transform: translateY(-50%); box-shadow: 0 0 0 1px currentColor; }
+.platform-bar-marker.tone-midnight { color: var(--midnight); }
+.platform-bar-marker.tone-sky { color: var(--hero-sky); }
+.platform-bar-marker.tone-green { color: var(--accent-green); }
 .donut-chart-wrap { display: grid; place-items: center; }
 .donut-chart { width: min(100%, 23rem); height: auto; overflow: visible; }
 .donut-base, .donut-slice, .donut-zero-mark { fill: none; stroke-width: 24; }
@@ -288,7 +306,7 @@ fieldset { border: 0; }
 .donut-callout { fill: var(--midnight); font-size: 14px; }
 .donut-callout-label { font-weight: 700; }
 .donut-callout-value { font-weight: 600; }
-.donut-center-label { fill: var(--muted); font-size: 12px; text-anchor: middle; text-transform: uppercase; }
+.donut-center-label { fill: var(--muted); font-size: 9px; text-anchor: middle; text-transform: uppercase; }
 .donut-center-value { fill: var(--midnight); font-size: 19px; font-weight: 700; text-anchor: middle; }
 .chart-legend { list-style: none !important; display: grid; grid-template-columns: 1fr; gap: 0.42rem; padding: 0 !important; margin: 0.7rem 0 0 !important; }
 .chart-legend li { display: grid; grid-template-columns: 0.7rem minmax(0, 1fr) auto; align-items: center; gap: 0.4rem; margin: 0 !important; font-size: 0.68rem !important; line-height: 1.35 !important; }
@@ -353,8 +371,9 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   .path-row { flex-direction: column; }
 }
 @media print {
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { background: var(--card); }
-  .app-header, .hero, .security-note, .launch-note, .wizard-grid, .action-bar, .result-tools, footer, dialog { display: none; }
+  .app-header, .hero, .security-note, .launch-note, .wizard-grid, .action-bar, .run-status, .results > .card-header, .source-grid, .result-tools, footer, dialog { display: none; }
   main, .results { width: 100%; margin: 0; padding: 0; }
   .report-formatted { padding: 0; border: 0; box-shadow: none; }
   .report-markdown { display: none !important; }
@@ -362,6 +381,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   table.report-table { min-width: 0; }
   .visual-summary, .visual-card { break-inside: avoid; page-break-inside: avoid; }
   .visual-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .export-chart-wrap.has-print-image > .export-source-svg { display: none !important; }
+  .export-chart-wrap.has-print-image > .print-chart-image { display: block !important; width: 100%; height: auto; }
 }
 </style>
 </head>
@@ -403,7 +424,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     </svg>
     <div>
       <strong>Preview only — launch the application to generate a report</strong>
-      <p id="launch-mode-message">This HTML file was opened directly. Portable example paths and the Circuit dashboard address are shown below, but automatic detection, file pickers, Lambda URL discovery, and collectors require the local application. Open <strong>Monthly AI Usage Report</strong> and use the 127.0.0.1 address it opens.</p>
+      <p id="launch-mode-message">This HTML file was opened directly. Portable example paths and the Circuit dashboard address are shown below, but automatic detection, file pickers, Lambda URL discovery, and collectors require the local application. Open <strong>AI Usage Report</strong> and use the 127.0.0.1 address it opens.</p>
     </div>
   </div>
 
@@ -689,7 +710,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     <button class="btn btn-header" type="button" id="close-about">Close</button>
   </div>
   <div class="about-body">
-    <div class="about-version"><span>Version <span id="about-version">1.3.8</span></span><span>Release date <span id="about-date">2026-08-07</span></span></div>
+    <div class="about-version"><span>Version <span id="about-version">1.4.1</span></span><span>Release date <span id="about-date">2026-08-07</span></span></div>
     <h3>How to use</h3>
     <ol>
       <li>Start the app and use the browser address it opens. This running copy is at <code id="local-app-url">the current browser address</code>. Port 8765 is only the preferred default.</li>
@@ -701,6 +722,10 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     </ol>
     <h3>Release notes</h3>
     <ul>
+      <li>Embedded high-resolution chart images in Word and Print / Save PDF exports so the token bars and cost donut remain visible.</li>
+      <li>Renamed the desktop application to AI Usage Report to reflect daily, weekly, monthly, and custom reporting.</li>
+      <li>Reconciled Bedrock direct input, cache read, cache write, and output tokens; added an explicit Bedrock total and replaced the token donut with labeled platform bars that keep very small sources visible.</li>
+      <li>Renamed the cost-chart center metric to Total available cost.</li>
       <li>Directly opened HTML now shows safe example paths, the Circuit dashboard URL, and a clear preview-only notice instead of blank fields or misleading backend errors.</li>
       <li>Simplified the visual summary to one cross-platform token-consumption chart and one cost-share chart, with labeled pointers for zero or unavailable costs and full detail retained in the table.</li>
       <li>Removed the optional clipboard-reading and manual extraction buttons; pasting Circuit dashboard text now triggers extraction automatically.</li>
@@ -733,7 +758,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
 
 <footer>
   Sources: personal Bedrock collector, local Codex session telemetry, and user-verified Circuit dashboard data. Generated locally; methodology: monthly-ai-usage-report skill.<br>
-  Version <span id="footer-version">1.3.8</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
+  Version <span id="footer-version">1.4.1</span> &nbsp;|&nbsp; Eric Rennie &middot; <a href="https://github.com/ericrennie">github.com/ericrennie</a>
 </footer>
 
 <script>
@@ -741,6 +766,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   'use strict';
   var latestReport = '';
   var latestPeriod = '';
+  var latestChartImages = null;
+  var latestChartImagePromise = null;
   var defaultPreviousStart = '';
   var defaultPreviousEnd = '';
   var circuitCaptureMethod = 'direct dashboard entry';
@@ -826,10 +853,10 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
 
   function quitApp() {
     if (!backendReady) {
-      status('Preview mode cannot stop or start the local application. Launch Monthly AI Usage Report normally.', 'error');
+      status('Preview mode cannot stop or start the local application. Launch AI Usage Report normally.', 'error');
       return;
     }
-    if (!window.confirm('Quit Monthly AI Usage Report and stop its local server?')) return;
+    if (!window.confirm('Quit AI Usage Report and stop its local server?')) return;
     lifecycleClosing = true;
     if (lifecycleHeartbeat !== null) window.clearInterval(lifecycleHeartbeat);
     if (lifecycleStreamController !== null) lifecycleStreamController.abort();
@@ -949,7 +976,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
       codex_sessions_found: false,
       codex_session_files: 0,
       circuit_dashboard_url: 'https://circuit.cisco.com/app/usage-dashboard',
-      version: '1.3.8',
+      version: '1.4.1',
       release_date: '2026-08-07'
     };
   }
@@ -1028,8 +1055,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     }
 
     byId('dashboard-url').value = data.circuit_dashboard_url || 'https://circuit.cisco.com/app/usage-dashboard';
-    byId('about-version').textContent = data.version || '1.3.8';
-    byId('footer-version').textContent = data.version || '1.3.8';
+    byId('about-version').textContent = data.version || '1.4.1';
+    byId('footer-version').textContent = data.version || '1.4.1';
     byId('about-date').textContent = data.release_date || '2026-08-07';
     var profile = byId('aws-profile');
     profile.replaceChildren();
@@ -1055,7 +1082,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     byId('browse-bedrock').disabled = true;
     byId('browse-codex').disabled = true;
     byId('quit-app').disabled = true;
-    status('Preview-only mode: open Monthly AI Usage Report and use the 127.0.0.1 address it launches.', '');
+    status('Preview-only mode: open AI Usage Report and use the 127.0.0.1 address it launches.', '');
   }
 
   function loadDefaults() {
@@ -1082,7 +1109,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
       })
       .catch(function () {
         applyDefaults(fallbackDefaults(), true);
-        enterPreviewMode('The local application backend could not be reached. Close this tab, start Monthly AI Usage Report, and use the 127.0.0.1 address it opens. Portable example paths and the Circuit dashboard address are shown below.');
+        enterPreviewMode('The local application backend could not be reached. Close this tab, start AI Usage Report, and use the 127.0.0.1 address it opens. Portable example paths and the Circuit dashboard address are shown below.');
       });
   }
 
@@ -1231,14 +1258,84 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     };
   }
 
+  function addPlatformBarChart(card, items, options) {
+    var total = items.reduce(function (sum, item) {
+      return sum + (item.available ? numericValue(item.value) : 0);
+    }, 0);
+    var totalBox = document.createElement('div');
+    totalBox.className = 'platform-total';
+    var totalLabel = document.createElement('span');
+    totalLabel.className = 'platform-total-label';
+    totalLabel.textContent = options.totalLabel;
+    var totalValue = document.createElement('span');
+    totalValue.className = 'platform-total-value';
+    totalValue.textContent = options.formatTotal(total);
+    totalValue.title = exactNumber(total) + ' tokens';
+    totalBox.appendChild(totalLabel);
+    totalBox.appendChild(totalValue);
+    card.appendChild(totalBox);
+
+    var chart = document.createElement('div');
+    chart.className = 'platform-bar-chart export-chart-wrap';
+    var svg = svgNode('svg', {
+      class: 'platform-bar-chart-svg export-source-svg',
+      viewBox: '0 0 520 156',
+      role: 'img',
+      'aria-label': items.map(function (item) {
+      return item.label + ': ' + options.formatItem(item, total);
+      }).join('; ')
+    });
+    var toneColors = {
+      'tone-midnight': '#0D274D',
+      'tone-sky': '#00BCEB',
+      'tone-green': '#74BF4B'
+    };
+    items.forEach(function (item, index) {
+      var value = item.available ? numericValue(item.value) : 0;
+      var percentage = total ? value / total * 100 : 0;
+      var rowY = 4 + index * 51;
+      var label = svgNode('text', {
+        x: '0', y: String(rowY + 12), fill: '#6B7F94',
+        'font-family': 'Arial, sans-serif', 'font-size': '12', 'font-weight': '600'
+      });
+      label.textContent = item.label;
+      svg.appendChild(label);
+      var displayValue = svgNode('text', {
+        x: '520', y: String(rowY + 12), fill: '#0D274D',
+        'font-family': 'Arial, sans-serif', 'font-size': '12', 'font-weight': '700',
+        'text-anchor': 'end'
+      });
+      displayValue.textContent = options.formatItem(item, total);
+      svg.appendChild(displayValue);
+      svg.appendChild(svgNode('rect', {
+        x: '0', y: String(rowY + 23), width: '520', height: '12', rx: '6', fill: '#DDE3EA'
+      }));
+      if (value > 0 && percentage < 0.5) {
+        svg.appendChild(svgNode('circle', {
+          cx: '6', cy: String(rowY + 29), r: '4.5', fill: toneColors[item.tone],
+          stroke: '#FFFFFF', 'stroke-width': '2'
+        }));
+      } else if (value > 0) {
+        svg.appendChild(svgNode('rect', {
+          x: '0', y: String(rowY + 23),
+          width: String(Math.max(0, Math.min(520, 520 * percentage / 100))),
+          height: '12', rx: '6', fill: toneColors[item.tone]
+        }));
+      }
+    });
+    chart.appendChild(svg);
+    card.appendChild(chart);
+    addVisualNote(card, options.note);
+  }
+
   function addDonutChart(card, items, options) {
     var total = items.reduce(function (sum, item) {
       return sum + (item.available ? numericValue(item.value) : 0);
     }, 0);
     var wrap = document.createElement('div');
-    wrap.className = 'donut-chart-wrap';
+    wrap.className = 'donut-chart-wrap export-chart-wrap';
     var svg = svgNode('svg', {
-      class: 'donut-chart',
+      class: 'donut-chart export-source-svg',
       viewBox: '0 0 360 224',
       role: 'img',
       'aria-label': items.map(function (item) {
@@ -1339,10 +1436,24 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     var circuit = sources.circuit || {};
     var bedrockData = usableSource(bedrock) ? (bedrock.data || {}) : {};
     var bedrockSummary = bedrockData.summary || {};
+    var bedrockModels = Array.isArray(bedrockData.models) ? bedrockData.models : [];
+    var reportedBedrockUsage = bedrockData.reported_token_usage || {};
     var codexData = usableSource(codex) ? (codex.data || {}) : {};
     var codexUsage = codexData.usage || {};
     var circuitData = usableSource(circuit) ? (circuit.data || {}) : {};
-    var bedrockTokens = numericValue(bedrockSummary.input_tokens) + numericValue(bedrockSummary.output_tokens);
+    var bedrockDirectInput = reportedBedrockUsage.direct_input_tokens !== undefined
+      ? numericValue(reportedBedrockUsage.direct_input_tokens)
+      : numericValue(bedrockSummary.input_tokens);
+    var bedrockCacheRead = reportedBedrockUsage.cache_read_tokens !== undefined
+      ? numericValue(reportedBedrockUsage.cache_read_tokens)
+      : bedrockModels.reduce(function (sum, item) { return sum + numericValue(item.cache_read_tokens); }, 0);
+    var bedrockCacheWrite = reportedBedrockUsage.cache_write_tokens !== undefined
+      ? numericValue(reportedBedrockUsage.cache_write_tokens)
+      : bedrockModels.reduce(function (sum, item) { return sum + numericValue(item.cache_write_tokens); }, 0);
+    var bedrockOutput = reportedBedrockUsage.output_tokens !== undefined
+      ? numericValue(reportedBedrockUsage.output_tokens)
+      : numericValue(bedrockSummary.output_tokens);
+    var bedrockTokens = bedrockDirectInput + bedrockCacheRead + bedrockCacheWrite + bedrockOutput;
     var codexTokens = numericValue(codexUsage.total_tokens);
     var circuitTokens = numericValue(circuitData.tokens);
     var bedrockCost = usableSource(bedrock) ? optionalNumber(bedrockSummary.total_cost) : null;
@@ -1365,20 +1476,20 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     var visualGrid = document.createElement('div');
     visualGrid.className = 'visual-grid';
     var tokenCard = visualCard('Token consumption by platform', 'Share of reported tokens across the three sources');
-    addDonutChart(tokenCard, [
+    addPlatformBarChart(tokenCard, [
       { label: 'Claude Code / AWS Bedrock', pointerLabel: 'Bedrock', value: bedrockTokens, available: usableSource(bedrock), tone: 'tone-midnight' },
       { label: 'Codex', pointerLabel: 'Codex', value: codexTokens, available: usableSource(codex), tone: 'tone-sky' },
       { label: 'Circuit', pointerLabel: 'Circuit', value: circuitTokens, available: usableSource(circuit), tone: 'tone-green' }
     ], {
-      centerLabel: 'Reported total',
+      totalLabel: 'Total reported tokens',
       formatTotal: compactNumber,
       formatItem: function (item, total) {
         if (!item.available) return 'Unavailable';
-        var share = total ? (numericValue(item.value) / total * 100).toFixed(1) + '%' : '0.0%';
+        var percentage = total ? numericValue(item.value) / total * 100 : 0;
+        var share = percentage > 0 && percentage < 0.1 ? '<0.1%' : percentage.toFixed(1) + '%';
         return compactNumber(item.value) + ' · ' + share;
       },
-      pointerText: function (item) { return item.available ? '0 tokens' : 'Unavailable'; },
-      note: 'Directional comparison only: providers use different token accounting and source windows. See the table below for detail.'
+      note: 'Bedrock includes direct input, cache read, cache write, and output. Directional comparison only: providers use different token accounting and source windows. See the table below for exact values.'
     });
     visualGrid.appendChild(tokenCard);
 
@@ -1388,7 +1499,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
       { label: 'Codex', pointerLabel: 'Codex', value: 0, available: false, tone: 'tone-sky' },
       { label: 'Circuit', pointerLabel: 'Circuit', value: circuitCost || 0, available: circuitCost !== null, tone: 'tone-green', qualifier: 'approximate' }
     ], {
-      centerLabel: 'Available cost',
+      centerLabel: 'Total available cost',
       formatTotal: function (value) { return moneyValue(value) || '$0.00'; },
       formatItem: function (item, total) {
         if (!item.available) return 'No Billing available';
@@ -1567,6 +1678,8 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
   function renderResult(result) {
     latestReport = result.report || '';
     latestPeriod = result.download_slug || 'report';
+    latestChartImages = null;
+    latestChartImagePromise = null;
     byId('report-output').textContent = latestReport;
     var formattedOutput = byId('formatted-output');
     renderMarkdown(latestReport, formattedOutput);
@@ -1585,7 +1698,7 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
 
   function runReport() {
     if (!backendReady) {
-      status('Launch Monthly AI Usage Report and use the 127.0.0.1 address it opens before generating a report.', 'error');
+      status('Launch AI Usage Report and use the 127.0.0.1 address it opens before generating a report.', 'error');
       return;
     }
     setRunBusy(true);
@@ -1634,37 +1747,182 @@ dialog.about-dialog::backdrop { background: rgba(7,20,40,0.62); }
     URL.revokeObjectURL(url);
   }
 
+  function inlineExportStyles(source, clone) {
+    var properties = [
+      'align-items', 'background', 'background-color', 'border', 'border-radius',
+      'bottom', 'box-shadow', 'box-sizing', 'color', 'display', 'fill',
+      'font-family', 'font-size', 'font-style', 'font-variant-numeric',
+      'font-weight', 'gap', 'grid-column', 'grid-row', 'grid-template-columns',
+      'grid-template-rows', 'height', 'justify-content', 'left', 'letter-spacing',
+      'line-height', 'list-style', 'margin', 'max-width', 'min-width', 'opacity',
+      'overflow', 'overflow-wrap', 'padding', 'place-items', 'position', 'right',
+      'stroke', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap',
+      'stroke-width', 'text-align', 'text-anchor', 'text-transform', 'top',
+      'transform', 'transform-origin', 'vertical-align', 'white-space', 'width'
+    ];
+    var sourceNodes = [source].concat(Array.from(source.querySelectorAll('*')));
+    var cloneNodes = [clone].concat(Array.from(clone.querySelectorAll('*')));
+    sourceNodes.forEach(function (sourceNode, index) {
+      var cloneNode = cloneNodes[index];
+      if (!cloneNode || !cloneNode.style) return;
+      var computed = window.getComputedStyle(sourceNode);
+      properties.forEach(function (property) {
+        var value = computed.getPropertyValue(property);
+        if (value) cloneNode.style.setProperty(property, value);
+      });
+    });
+  }
+
+  function rasterizeChartSvg(svg) {
+    var viewBox = svg.viewBox && svg.viewBox.baseVal;
+    var bounds = svg.getBoundingClientRect();
+    var width = Math.max(1, Math.ceil(viewBox && viewBox.width ? viewBox.width : bounds.width));
+    var height = Math.max(1, Math.ceil(viewBox && viewBox.height ? viewBox.height : bounds.height));
+    var scale = 2;
+    var clone = svg.cloneNode(true);
+    inlineExportStyles(svg, clone);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.style.width = width + 'px';
+    clone.style.height = height + 'px';
+    clone.style.margin = '0';
+    var serialized = new XMLSerializer().serializeToString(clone);
+    var source = URL.createObjectURL(new Blob([serialized], { type: 'image/svg+xml;charset=utf-8' }));
+    return new Promise(function (resolve, reject) {
+      var image = new Image();
+      image.onload = function () {
+        try {
+          var canvas = document.createElement('canvas');
+          canvas.width = width * scale;
+          canvas.height = height * scale;
+          var context = canvas.getContext('2d');
+          context.scale(scale, scale);
+          context.fillStyle = '#FFFFFF';
+          context.fillRect(0, 0, width, height);
+          context.drawImage(image, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/png'));
+        } catch (error) {
+          reject(error);
+        } finally {
+          URL.revokeObjectURL(source);
+        }
+      };
+      image.onerror = function () {
+        URL.revokeObjectURL(source);
+        reject(new Error('A chart could not be converted for export.'));
+      };
+      image.src = source;
+    });
+  }
+
+  function chartImagesForExport() {
+    if (latestChartImages) return Promise.resolve(latestChartImages);
+    if (latestChartImagePromise) return latestChartImagePromise;
+    var charts = Array.from(byId('formatted-output').querySelectorAll('.export-source-svg'));
+    latestChartImagePromise = Promise.all(charts.map(rasterizeChartSvg)).then(function (images) {
+      latestChartImages = images;
+      latestChartImagePromise = null;
+      return images;
+    }).catch(function (error) {
+      latestChartImagePromise = null;
+      throw error;
+    });
+    return latestChartImagePromise;
+  }
+
+  function reportHtmlWithEmbeddedCharts(chartImages) {
+    var exportRoot = byId('formatted-output').cloneNode(true);
+    var charts = Array.from(exportRoot.querySelectorAll('.export-source-svg'));
+    charts.forEach(function (chart, index) {
+      var image = document.createElement('img');
+      var isDonut = chart.classList.contains('donut-chart');
+      var displayWidth = isDonut ? 500 : 640;
+      var viewBox = chart.getAttribute('viewBox') || '';
+      var dimensions = viewBox.trim().split(/\s+/).map(Number);
+      var displayHeight = dimensions.length === 4 && dimensions[2] > 0
+        ? Math.round(displayWidth * dimensions[3] / dimensions[2])
+        : undefined;
+      image.className = 'export-chart-image';
+      image.src = chartImages[index];
+      image.alt = chart.getAttribute('aria-label') || 'Report chart';
+      image.setAttribute('width', String(displayWidth));
+      if (displayHeight) image.setAttribute('height', String(displayHeight));
+      image.style.display = 'block';
+      image.style.width = displayWidth + 'px';
+      image.style.maxWidth = '100%';
+      image.style.height = 'auto';
+      chart.replaceWith(image);
+    });
+    exportRoot.querySelectorAll('.visual-card').forEach(function (card) {
+      card.style.breakInside = 'avoid';
+      card.style.pageBreakInside = 'avoid';
+    });
+    exportRoot.querySelectorAll('table').forEach(function (table) {
+      table.setAttribute('width', '100%');
+      table.style.width = '100%';
+      table.style.tableLayout = 'fixed';
+    });
+    return exportRoot.innerHTML;
+  }
+
+  function installPrintChartImages(chartImages) {
+    var charts = Array.from(byId('formatted-output').querySelectorAll('.export-source-svg'));
+    charts.forEach(function (chart, index) {
+      var wrap = chart.parentElement;
+      wrap.querySelectorAll('.print-chart-image').forEach(function (node) { node.remove(); });
+      var image = document.createElement('img');
+      image.className = 'export-chart-image print-chart-image';
+      image.src = chartImages[index];
+      image.alt = chart.getAttribute('aria-label') || 'Report chart';
+      wrap.appendChild(image);
+      wrap.classList.add('has-print-image');
+    });
+  }
+
   function downloadWord() {
     if (!latestReport) return;
-    var reportHtml = byId('formatted-output').innerHTML;
-    var styles = '<style>' +
-      'body{font-family:Arial,sans-serif;color:#1B2A3D;font-size:11pt;line-height:1.45;margin:36pt}' +
-      'h1,h2,h3,strong{color:#0D274D}h1{font-size:22pt}h2{font-size:15pt;border-bottom:2px solid #00BCEB;padding-bottom:5pt}' +
-      '.visual-summary{margin:14pt 0}.visual-intro,.visual-card-subtitle,.visual-note,.legend-label{color:#6B7F94}' +
-      '.visual-card{border:1px solid #DDE3EA;padding:8pt;margin:6pt 0}.visual-card-title{font-size:11pt;font-weight:bold;color:#0D274D}' +
-      '.donut-chart{width:260pt;height:auto}.donut-base{fill:none;stroke:#DDE3EA;stroke-width:24}.donut-slice{fill:none;stroke-width:24}.donut-zero-mark{fill:none;stroke-width:5}.donut-pointer{fill:none;stroke-width:1.5}.donut-slice.tone-midnight,.donut-zero-mark.tone-midnight,.donut-pointer.tone-midnight{stroke:#0D274D}.donut-slice.tone-sky,.donut-zero-mark.tone-sky,.donut-pointer.tone-sky{stroke:#00BCEB}.donut-slice.tone-green,.donut-zero-mark.tone-green,.donut-pointer.tone-green{stroke:#74BF4B}.donut-callout{fill:#0D274D;font-size:14px}.donut-callout-label,.donut-center-value{font-weight:bold}.donut-center-label{fill:#6B7F94}' +
-      '.tone-midnight{background:#0D274D}.tone-sky{background:#00BCEB}.tone-green{background:#74BF4B}.chart-legend{list-style:none;padding-left:0}.chart-legend li{margin:4pt 0}.legend-marker{display:inline-block;width:7pt;height:7pt;margin-right:3pt}.legend-value{font-weight:bold;color:#0D274D}' +
-      'table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12pt 0}th{background:#0D274D;color:#fff;text-align:left}' +
-      'th,td{border:1px solid #DDE3EA;padding:7pt;vertical-align:top;overflow-wrap:anywhere}th:nth-child(1){width:17%}th:nth-child(2){width:25%}th:nth-child(3){width:18%}th:nth-child(4){width:40%}' +
-      'li,p{font-size:10pt}.report-table-wrap{width:100%}' +
-      '</style>';
-    var documentHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>AI Usage Report</title>' + styles + '</head><body>' + reportHtml + '</body></html>';
-    var blob = new Blob(['\ufeff', documentHtml], { type: 'application/msword;charset=utf-8' });
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement('a');
-    link.href = url;
-    link.download = 'ai-usage-report-' + latestPeriod + '.doc';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    status('Word-compatible report downloaded.', 'success');
+    status('Preparing chart images for Word…', '');
+    chartImagesForExport().then(function (chartImages) {
+      var reportHtml = reportHtmlWithEmbeddedCharts(chartImages);
+      var styles = '<style>' +
+        '@page{size:letter portrait;margin:0.55in}' +
+        'body{font-family:Arial,sans-serif;color:#1B2A3D;font-size:11pt;line-height:1.45;margin:0}' +
+        'h1,h2,h3,strong{color:#0D274D}h1{font-size:22pt}h2{font-size:15pt;border-bottom:2px solid #00BCEB;padding-bottom:5pt}' +
+        '.visual-summary{margin:14pt 0}.visual-intro,.visual-card-subtitle,.visual-note,.legend-label{color:#6B7F94}' +
+        '.visual-grid{display:block}.visual-card{border:0;padding:0;margin:9pt 0;page-break-inside:avoid;break-inside:avoid}.export-chart-image{display:block;max-width:100%;height:auto;border:0}.visual-card-title{font-size:11pt;font-weight:bold;color:#0D274D}' +
+        '.platform-total{padding:6pt;background:#F4F6F8;margin:6pt 0}.platform-total-label{color:#6B7F94;font-size:8pt;font-weight:bold}.platform-total-value{float:right;color:#0D274D;font-weight:bold}.platform-bar-row{margin:7pt 0}.platform-bar-head{display:flex;justify-content:space-between}.platform-bar-label{color:#6B7F94}.platform-bar-value{font-weight:bold;color:#0D274D}.platform-bar-track{height:8pt;background:#DDE3EA;border-radius:8pt}.platform-bar-fill{height:8pt;border-radius:8pt}.platform-bar-marker{display:inline-block;width:6pt;height:6pt;border-radius:50%;margin-top:1pt}' +
+        '.donut-chart{width:260pt;height:auto}.donut-base{fill:none;stroke:#DDE3EA;stroke-width:24}.donut-slice{fill:none;stroke-width:24}.donut-zero-mark{fill:none;stroke-width:5}.donut-pointer{fill:none;stroke-width:1.5}.donut-slice.tone-midnight,.donut-zero-mark.tone-midnight,.donut-pointer.tone-midnight{stroke:#0D274D}.donut-slice.tone-sky,.donut-zero-mark.tone-sky,.donut-pointer.tone-sky{stroke:#00BCEB}.donut-slice.tone-green,.donut-zero-mark.tone-green,.donut-pointer.tone-green{stroke:#74BF4B}.donut-callout{fill:#0D274D;font-size:14px}.donut-callout-label,.donut-center-value{font-weight:bold}.donut-center-label{fill:#6B7F94;font-size:9px}' +
+        '.tone-midnight{background:#0D274D}.tone-sky{background:#00BCEB}.tone-green{background:#74BF4B}.chart-legend{list-style:none;padding-left:0}.chart-legend li{margin:4pt 0}.legend-marker{display:inline-block;width:7pt;height:7pt;margin-right:3pt}.legend-value{font-weight:bold;color:#0D274D}' +
+        'table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12pt 0}th{background:#0D274D;color:#fff;text-align:left}' +
+        'th,td{border:1px solid #DDE3EA;padding:7pt;vertical-align:top;word-break:normal;overflow-wrap:break-word}th:nth-child(1){width:17%}th:nth-child(2){width:25%}th:nth-child(3){width:18%}th:nth-child(4){width:40%}' +
+        'li,p{font-size:10pt}.report-table-wrap{width:100%}' +
+        '</style>';
+      var documentHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>AI Usage Report</title>' + styles + '</head><body>' + reportHtml + '</body></html>';
+      var blob = new Blob(['\ufeff', documentHtml], { type: 'application/msword;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = 'ai-usage-report-' + latestPeriod + '.doc';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      status('Word-compatible report downloaded with embedded charts.', 'success');
+    }).catch(function (error) {
+      status('Word export failed: ' + error.message, 'error');
+    });
   }
 
   function printReport() {
     if (!latestReport) return;
     setReportView('formatted');
-    window.print();
+    status('Preparing chart images for PDF…', '');
+    chartImagesForExport().then(function (chartImages) {
+      installPrintChartImages(chartImages);
+      status('Charts prepared. Choose Save as PDF in the print dialog.', 'success');
+      window.setTimeout(function () { window.print(); }, 0);
+    }).catch(function (error) {
+      status('PDF preparation failed: ' + error.message, 'error');
+    });
   }
 
   function openCircuit() {

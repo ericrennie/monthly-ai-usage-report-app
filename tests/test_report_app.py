@@ -191,6 +191,20 @@ class ReportOutputTests(unittest.TestCase):
         circuit_row = self.circuit_row(report)
         self.assertIn("| $7.16 approximate/informational | 100 tokens |", circuit_row)
 
+    def test_bedrock_total_includes_direct_cache_and_output_tokens(self) -> None:
+        sources = self.sample_sources("direct dashboard entry")
+        sources["bedrock"]["data"]["models"] = [
+            {"model": "example-model", "api_calls": 2, "cache_read_tokens": 20, "cache_write_tokens": 30}
+        ]
+        period = {
+            "label": "August 1–6, 2026",
+            "start_date": date(2026, 8, 1),
+            "end_date": date(2026, 8, 6),
+        }
+        report = REPORT_APP.build_report(period, "America/Chicago", sources)
+        bedrock_row = next(line for line in report.splitlines() if line.startswith("| Claude Code / AWS Bedrock |"))
+        self.assertIn("10 direct input; 20 cache read; 30 cache write; 4 output; 64 total", bedrock_row)
+
 
 class UiDefaultsTests(unittest.TestCase):
     def test_acknowledgements_are_preselected(self) -> None:
@@ -212,7 +226,13 @@ class UiDefaultsTests(unittest.TestCase):
         self.assertIn("Usage at a glance", html)
         self.assertIn("Token consumption by platform", html)
         self.assertIn("Cost share by platform", html)
+        self.assertIn("function addPlatformBarChart(card, items, options)", html)
+        self.assertIn("addPlatformBarChart(tokenCard", html)
         self.assertIn("function addDonutChart(card, items, options)", html)
+        self.assertNotIn("addDonutChart(tokenCard", html)
+        self.assertIn("Total reported tokens", html)
+        self.assertIn("Total available cost", html)
+        self.assertIn("bedrockDirectInput + bedrockCacheRead + bedrockCacheWrite + bedrockOutput", html)
         self.assertIn("providers use different token accounting and source windows", html)
         self.assertIn("Zero and unavailable costs remain visible as labeled pointers", html)
         self.assertNotIn("Bedrock token composition", html)
@@ -234,6 +254,21 @@ class UiDefaultsTests(unittest.TestCase):
         self.assertIn(".visual-grid { display: grid", html)
         self.assertIn(".visual-grid { grid-template-columns: 1fr; }", html)
         self.assertIn(".visual-summary, .visual-card { break-inside: avoid", html)
+
+    def test_word_and_pdf_exports_embed_chart_images(self) -> None:
+        html = (REPORT_APP.SKILL_DIR / "assets" / "report_app.html").read_text(encoding="utf-8")
+        self.assertIn("function rasterizeChartSvg(svg)", html)
+        self.assertIn("canvas.toDataURL('image/png')", html)
+        self.assertNotIn("<foreignObject", html)
+        self.assertIn("function reportHtmlWithEmbeddedCharts(chartImages)", html)
+        self.assertIn("function installPrintChartImages(chartImages)", html)
+        self.assertIn(".export-chart-wrap.has-print-image > .print-chart-image", html)
+        self.assertIn(".results > .card-header, .source-grid, .result-tools", html)
+        self.assertIn("image.setAttribute('width', String(displayWidth))", html)
+        self.assertIn("page-break-inside:avoid", html)
+        self.assertIn("-webkit-print-color-adjust: exact", html)
+        self.assertIn("Word-compatible report downloaded with embedded charts", html)
+        self.assertIn("Choose Save as PDF in the print dialog", html)
 
     def test_direct_html_preview_has_safe_nonsecret_defaults(self) -> None:
         html = (REPORT_APP.SKILL_DIR / "assets" / "report_app.html").read_text(encoding="utf-8")
